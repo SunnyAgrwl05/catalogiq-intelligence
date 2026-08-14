@@ -1,181 +1,410 @@
-# KrishiMitra — AI Crop Type, Moisture Stress Detection &amp; Irrigation Advisory
+# CatalogIQ — Turning Messy Product Data into Clean, Ready-to-Use Records
 
-**Team SpaceHack — Bharatiya Antariksh Hackathon 2026 (ISRO H2S)**
-Problem Statement: *AI-Driven Automated Crop type, Moisture Stress Detection and irrigation
-advisory Across Growth Stages Using Moderate Resolution Spectral Signatures
-(Optical &amp; Microwave Satellite Data)*
+This project takes messy, incomplete product data (like a spreadsheet
+of part numbers with missing or inconsistent info) and turns it into
+clean, complete, standardized product listings — the kind a big
+catalog or online store actually needs.
 
----
+Built for a real problem: Unilog needs to clean and complete around
+150,000 products every month.
 
-## Kya bana hai (What this is)
-
-Ek end-to-end working prototype jo PPT mein diye gaye system pipeline ko implement karta hai:
-
-```
-Data Ingestion → Preprocessing → Feature Extraction → AI Modeling → Decision Engine → Dashboard
-```
-
-| Stage | Implementation (this repo) | Production upgrade path |
-|---|---|---|
-| Data Ingestion | `model/satellite_sim.py` — deterministic, schema-matched Sentinel-2 (optical) + Sentinel-1 (SAR) simulator, crop-calendar aware | Swap for Google Earth Engine Python API pulling real Sentinel-2/Landsat/AWiFS + Sentinel-1/NISAR |
-| Preprocessing | Baked into simulator (cloud-free, terrain-corrected signal) | Sen2Cor atm. correction, FMask cloud masking, SNAP/ISCE SAR speckle filter |
-| Feature Extraction | NDVI, NDWI, MSI, VV/VH backscatter + ratio, growth_fraction | Same, computed from real rasters via GDAL/Rasterio/xarray |
-| AI Modeling | RandomForest crop classifier (76% acc) + RandomForest stress classifier (96% acc) — `model/train_model.py` | CNN-Transformer (crop ID) + LSTM-Attention (phenology), trained on multi-year labelled Sentinel time series |
-| Decision Engine | `model/decision_engine.py` — FAO-56 Kc-based crop water balance + stress-severity irrigation rules | Full CROPWAT/Optirrig integration + live rainfall forecast (OpenWeatherMap/NOAA) |
-| Output/Delivery | Web dashboard (Flask) + JSON API + Hinglish advisory text (SMS-ready) | Add Twilio SMS delivery, GeoTIFF/shapefile export |
-
-**Kyun simulated satellite data?** Live Google Earth Engine / Copernicus API access is
-sandbox mein available nahi tha (no internet in the build environment). Isliye
-`satellite_sim.py` ek deterministic, crop-calendar-aware generator hai jo Sentinel-2/-1
-jaisa hi feature schema deta hai — taaki AI model, decision engine, aur dashboard
-**exactly wahi** kaam karein jo real data ke saath karenge. Real access milte hi sirf
-`satellite_sim.simulate_field()` ko GEE calls se replace karna hai — baaki system untouched.
+**Try it live:** https://catalogiq-intelligence-yr8ctj9uouksvm3zbjhv8b.streamlit.app/
+**Demo video:** _[add link here]_
 
 ---
 
-## Project structure
+## What we focused on
 
-```
-krishimitra/
-├── app.py                        # Flask backend + REST API
-├── requirements.txt
-├── Dockerfile
-├── model/
-│   ├── satellite_sim.py          # simulated Sentinel-2 + Sentinel-1 ingestion
-│   ├── generate_training_data.py # synthetic labelled dataset generator
-│   ├── train_model.py            # trains + saves crop_model.pkl, stress_model.pkl
-│   ├── decision_engine.py         # irrigation advisory rules (FAO-56 Kc)
-│   ├── crop_model.pkl / stress_model.pkl / metrics.json   (generated)
-├── templates/index.html          # dashboard UI
-├── static/style.css, script.js   # dashboard styling + Leaflet map logic
-└── tests/test_app.py             # pytest suite (12 tests)
-```
+The challenge had 9 steps in total. We were told upfront: *"You don't
+need to do all 9 steps perfectly — doing 2-3 steps really well beats
+doing all 9 half-heartedly."* So that's what we did.
+
+**Fully built, tested, and working in the live demo:**
+- Cleaning up messy part numbers (removing junk text, extra spaces, placeholder values)
+- Matching manufacturer/brand names correctly, even when they're spelled differently
+- Checking product details against an approved list of correct values
+- Converting measurements into a standard format (like turning "0.5 inch" into "1/2 inch")
+- Writing 5 different versions of each product description, all within strict length limits
+- Giving every product a trust score, and flagging anything that needs a human to double-check it
+
+**Planned but not built yet (see Roadmap below):**
+- Automatically sorting products into categories (right now we use simple keyword matching, not smart AI-based sorting)
+- Automatically searching manufacturer websites for extra product specs
+- Automatically finding product images, spec sheets, and safety documents
+
+We didn't fake these parts. If something isn't built yet, the README
+says so clearly — because guessing wrong is worse than saying "not
+done yet."
 
 ---
 
-## Current API (v2 — all original endpoints preserved + new ones added)
+## How it works (step by step)
 
-| Endpoint | Method | Purpose |
-|---|---|---|
-| `/api/fields` | GET | Original — pipeline results for the 6 demo fields |
-| `/api/analyze` | POST | Original — ad-hoc lat/lon analysis (now also logs to history) |
-| `/api/model-metrics` | GET | Original — crop/stress model accuracy |
-| `/api/health` | GET | Original — health check |
-| `/api/weather` | GET `?lat=&lon=` | **New** — OpenWeatherMap if `OPENWEATHER_API_KEY` set, else simulated |
-| `/api/search-location` | GET `?q=` | **New** — village/district/state search via Nominatim |
-| `/api/history` | GET `?crop=&urgency=&limit=` | **New** — past analyses (SQLite-backed) |
-| `/api/dashboard` | GET | **New** — aggregate stats across all demo fields |
+```
+                     ┌─────────────────────────┐
+  Messy CSV file ──▶ │ 1. Clean up the data     │
+                     │    (remove junk text)    │
+                     └───────────┬─────────────┘
+                                 ▼
+                     ┌─────────────────────────┐
+                     │ 2. Match brand/          │
+                     │    manufacturer names    │
+                     └───────────┬─────────────┘
+                                 ▼
+                     ┌─────────────────────────┐
+                     │ 3. Sort into categories  │  (basic version now,
+                     │                          │   smarter AI later)
+                     └───────────┬─────────────┘
+                                 ▼
+                     ┌─────────────────────────┐
+        (planned) ──▶│ 4. Search manufacturer   │
+                     │    websites for specs    │
+                     └───────────┬─────────────┘
+                                 ▼
+                     ┌─────────────────────────┐
+                     │ 5. Check values against  │
+                     │    the approved list     │
+                     └───────────┬─────────────┘
+                                 ▼
+                     ┌─────────────────────────┐
+                     │ 6. Standardize units     │
+                     │    (e.g. 0.5in → 1/2in)  │
+                     └───────────┬─────────────┘
+                                 ▼
+                     ┌─────────────────────────┐
+                     │ 7. Write 5 product       │
+                     │    descriptions          │
+                     └───────────┬─────────────┘
+                                 ▼
+                     ┌─────────────────────────┐
+        (planned) ──▶│ 8. Find images, PDFs,    │
+                     │    safety documents      │
+                     └───────────┬─────────────┘
+                                 ▼
+                     ┌─────────────────────────┐
+                     │ 9. Give a trust score +  │
+                     │    flag for review       │
+                     └───────────┬─────────────┘
+                                 ▼
+                     Final, clean product record
+```
 
-**Response format unchanged** for all four original endpoints — nothing that already
-worked was modified.
+## What it does — in detail
 
-## What's new in this version (Phase 1 + Phase 2)
+### 1. Cleaning up messy text
 
-- **Frontend**: glassmorphism dark space theme, animated sidebar with search/filter chips,
-  skeleton loading states, 4 map base layers (Dark/Satellite/Street/Terrain) + NDVI/Stress/Heatmap
-  overlay toggles, marker clustering, locate-me + fullscreen controls, risk badges + progress bars
-  in the detail panel, growth timeline visual, 4-step Analyze wizard (Location → Crop&Stage →
-  Weather → Analyze), animated pipeline architecture diagram + illustrative feature importance chart.
-- **Backend**: `model/gee.py` (Google Earth Engine module — auto-initializes if `earthengine-api`
-  is installed and credentials are set via `GEE_SERVICE_ACCOUNT`/`GEE_KEY_PATH`; otherwise falls
-  back to the existing simulator automatically, no code changes needed elsewhere), `model/weather.py`
-  (OpenWeatherMap, env var `OPENWEATHER_API_KEY`), `model/location_search.py` (Nominatim),
-  `model/history.py` (SQLite log of every `/api/analyze` call).
-- **Not yet implemented** (documented honestly, not silently skipped): PDF report generation,
-  JWT auth (farmer/admin login), PWA offline support, WhatsApp/SMS delivery, Chart.js trend
-  charts. These are straightforward additions on top of the current structure — ask if you want
-  them built out next.
+Real product data is often messy — extra spaces, weird symbols,
+placeholder text like "N/A". This step cleans all of that up first.
 
-## 1. Setup (ek baar)
+**Example:**
+```
+Before: "  ABC-123 / N/A "
+After:  "ABC-123"
+```
+
+### 2. Matching brand names correctly
+
+Sometimes a brand is written differently across different files —
+like "ACME" vs "ACME INC." This step matches them to one correct,
+official name, and tells you how confident it is about the match.
+
+**Example:**
+```
+Input:     "ACME INC."
+Matched to: "ACME"
+Confidence: 94%  (match type: close but not exact)
+```
+
+If the match isn't confident enough, it gets flagged so a person can
+check it — the tool never just guesses silently.
+
+### 3. Sorting products into categories
+
+Right now, this uses simple keyword matching (e.g. if the text says
+"hex bolt," it's tagged as a Bolt under Fasteners).
+
+**Example:**
+```
+"stainless steel hex bolt"  →  Fasteners → Bolts
+```
+
+**Future improvement:** use smarter AI-based matching instead of just
+keywords, so it understands meaning, not just exact words.
+
+### 4. Searching manufacturer websites (not built yet)
+
+The idea: automatically visit a manufacturer's website, search for
+the exact product, and pull extra details from there.
+
+This part isn't switched on yet — we didn't want to risk it failing
+live during the demo. But the groundwork is already there: there are
+spots ready in the data to store manufacturer links and reference
+URLs once this is built.
+
+### 5. Checking values against an approved list
+
+Some fields (like material type) need to match an official, approved
+list of values — this step checks for and fixes small mistakes like
+typos.
+
+**Example:**
+```
+Input:    "Stainless Steal"
+Correct:  "Stainless Steel"
+Result:   Automatically corrected (or flagged if unsure)
+```
+
+### 6. Standardizing measurements
+
+Different files describe sizes differently. This step makes them all
+consistent — including converting decimals into fractions.
+
+**Example:**
+```
+Input:      0.5 in
+Standard:   1/2 in
+```
+
+It supports converting any fraction from 1/64 up to 63/64.
+
+### 7. Writing product descriptions
+
+The tool writes 5 different versions of a product description, each
+one following a strict character limit — because catalogs and online
+stores often have tight length rules for descriptions. It writes
+directly within that limit, instead of writing something long and
+then cutting it short (which usually looks broken).
+
+### 8. Finding images and documents (not built yet)
+
+The plan is to automatically find product images, spec sheets (PDFs),
+and safety data sheets. This is on the roadmap, not built yet.
+
+### 9. Trust score + human review
+
+Every product gets a score out of 100 showing how trustworthy the
+final data is, based on things like: how confident the brand match
+was, whether values passed the approved list check, and how complete
+the descriptions are.
+
+**Example:**
+```
+Trust Score: 94%
+
+Brand match accuracy       98%
+Approved value check      100%
+Unit conversion accuracy  100%
+Description quality        92%
+How complete the data is   80%
+```
+
+It's not just a number — you can see exactly why it got that score.
+
+## When something needs a human to check it
+
+If the trust score is too low, the product gets flagged automatically
+with a plain-English reason.
+
+**Example:**
+```
+Trust Score: 61%
+Needs a human to check: YES
+
+Why:
+The brand match wasn't confident enough.
+Some information is missing.
+```
+
+This way, the system never quietly inserts data it isn't sure about —
+it asks for help instead.
+
+## How AI is used (and where it's kept out)
+
+We kept AI (like Claude) out of the parts that need to be 100%
+reliable. Things like matching brand names, converting units, and
+checking approved values are all done with plain, predictable logic
+— not AI guesses.
+
+AI is only used, optionally, for writing extra marketing-style text
+(like a catchy product blurb) — never for the core structured data.
+
+**Why we did it this way:**
+- Less risk of AI making things up
+- Lower cost (no AI calls needed for most of the work)
+- Faster processing
+- The whole tool still works even without internet or an AI service
+
+You can turn on AI-written marketing text by adding an
+`ANTHROPIC_API_KEY`, but everything else works fine without it.
+
+## What the demo shows you
+
+- **Accuracy** — how closely the results match a known correct answer set
+- **Description length checks** — confirms every description stays within its limit
+- **Brand matching results** — how many were exact matches, close matches, or no match
+- **How many products need human review**, and why
+
+## Tests
+
+The project includes automated tests that check all the core logic —
+text cleanup, brand matching, unit conversion, description limits,
+approved value checks, and trust scoring.
+
+Run them with:
 
 ```bash
-cd krishimitra
-python3 -m venv venv
-source venv/bin/activate          # Windows: venv\Scripts\activate
+pytest -q
+```
+
+## Project folders
+
+```
+catalogiq-intelligence/
+│
+├── pipeline/              # the main logic
+│   ├── parsing.py          # step 1: cleanup
+│   ├── normalize.py        # steps 2 & 6: brand matching + units
+│   ├── describe_gen.py     # step 7: descriptions
+│   ├── validator.py        # steps 5 & 9: approved values + trust score
+│   └── orchestrator.py     # runs everything together
+│
+├── data/                  # reference data used by the pipeline
+│   ├── manufacturer_list.csv
+│   ├── uom_standards.csv
+│   ├── decimal_fraction.csv
+│   ├── lov.csv
+│   ├── sample_input.csv
+│   └── ground_truth.csv
+│
+├── evaluation/
+│   └── accuracy_scorer.py
+│
+├── tests/
+│
+├── app.py                 # the Streamlit app you interact with
+├── requirements.txt
+└── README.md
+```
+
+## Running it on your own computer
+
+Clone the project:
+
+```bash
+git clone https://github.com/SunnyAgrwl05/catalogiq-intelligence.git
+cd catalogiq-intelligence
+```
+
+Install what it needs:
+
+```bash
 pip install -r requirements.txt
 ```
 
-## 2. Model train karna (build)
+Start the app:
 
 ```bash
-python3 model/generate_training_data.py   # 6000 synthetic labelled samples banata hai
-python3 model/train_model.py              # crop_model.pkl + stress_model.pkl train + save
+streamlit run app.py
 ```
 
-Expected output: crop model ~76% accuracy, stress model ~96% accuracy (`model/metrics.json` mein saved).
+Then upload a CSV file with these columns: `Mfg_Part_Num, Part_Desc,
+E1_Brand, Unilog_Brand, DIB_Brand, Part_Manuf` — or just use the
+sample file that's already included. The app will clean and enrich
+the data, show you the results, compare them to known correct
+answers, and flag anything that needs review.
 
-## 3. Run karna
+## What a CSV input looks like
 
-```bash
-python3 app.py
+```csv
+Mfg_Part_Num,Part_Desc,E1_Brand,Unilog_Brand,DIB_Brand,Part_Manuf
+ABC-123,1/2 SS HEX BOLT,ACME,ACME,ACME,ACME
+XYZ-456,3.5 IN PIPE CLAMP,ACME,ACME,ACME,ACME
 ```
 
-Browser mein kholein: **http://localhost:5000**
+## What you get back
 
-- **Field Map** tab — 6 demo fields (UP districts) live pipeline se analyzed, map par color-coded (NDVI health + stress urgency)
-- **Naya Field Analyze** tab — koi bhi lat/lon daalo, full pipeline live chalega
-- **Pipeline** tab — model accuracy metrics + architecture steps
+A cleaned-up version of each product with: correct manufacturer name,
+correct brand, category, standardized measurements, 5 description
+formats, approved value checks, a trust score, whether it needs human
+review (and why), and space for reference links.
 
-## 4. Test karna
+## How this could scale up to handle way more products
 
-```bash
-pip install pytest   # agar requirements.txt se pehle install nahi hua
-pytest tests/ -v
-```
+To go from a small demo to handling hundreds of thousands of products
+a month, here's the plan:
 
-12 tests cover: simulator determinism, decision-engine rules, aur poora Flask API
-(health check, fields list, analyze endpoint, error handling, model metrics).
-Sab pass hone chahiye.
+1. **Run things in parallel** — the cleanup, brand matching, unit
+   conversion, and description steps don't depend on AI, so they can
+   run on multiple computers at once.
+2. **Remember past lookups** — once a brand name or approved value has
+   been checked once, save the result so it doesn't need to be
+   checked again.
+3. **Handle website searching separately** — since visiting manufacturer
+   websites takes longer, that part runs on its own, at its own pace,
+   without slowing down everything else.
+4. **Keep AI use limited and optional** — since AI is only used for
+   extra marketing text, the main process never has to wait on it.
 
-## 5. Quick API check (copy-paste)
+## What's next (roadmap)
 
-```bash
-curl http://localhost:5000/api/health
-curl http://localhost:5000/api/fields
-curl -X POST http://localhost:5000/api/analyze \
-  -H "Content-Type: application/json" \
-  -d '{"lat": 26.85, "lon": 80.95, "crop": "Wheat"}'
-```
+**Already done:**
+- [x] Cleaning up messy text
+- [x] Brand/manufacturer matching
+- [x] Approved value checking
+- [x] Unit standardization
+- [x] 5 description formats with length limits
+- [x] Trust scoring + human review flagging
+- [x] Working demo app
+- [x] Automated tests
 
-## 6. Deploy karna
+**Coming next:**
+- [ ] Smarter, AI-based category sorting
+- [ ] Automatic manufacturer website searching
+- [ ] Automatic image/document finding
+- [ ] Full-size approved values list
 
-**Option A — Docker (recommended for demo/judges' laptop):**
-```bash
-docker build -t krishimitra .
-docker run -p 5000:5000 krishimitra
-```
-Browser: http://localhost:5000
+**After that — scaling up:**
+- [ ] Splitting work across multiple computers
+- [ ] Faster processing queue
+- [ ] Shared memory/caching system
+- [ ] Monitoring so we know if something breaks
+- [ ] Automatic retry when something fails
+- [ ] A dashboard to track large batches
 
-**Option B — Cloud (Render / Railway / any Python host):**
-- Push repo, set start command: `python3 app.py`
-- Add build command: `pip install -r requirements.txt && python3 model/generate_training_data.py && python3 model/train_model.py`
-- `PORT` env var automatically respected by `app.py`
+## Being upfront about what's missing
 
----
+- **Website searching** isn't switched on yet — it's built into the
+  design, just not turned on for this version.
+- **Finding images/documents** isn't built yet.
+- **Category sorting** is basic keyword matching for now, not smart AI sorting.
+- **Reference data** used here is a smaller sample version — the real
+  system would use much larger, complete versions of the same files.
 
-## Presentation mein kya bolna hai (talking points)
+## Our approach, in plain terms
 
-1. **Problem**: Kisan ko pata nahi chalta ki field mein kaunsi fasal hai, kaunse growth
-   stage mein hai, aur kab paani chahiye — satellite data available hai par usable form mein nahi.
-2. **Solution**: Ek single AI pipeline jo Optical (NDVI/NDWI/MSI) + SAR (VV/VH) fuse karke
-   crop type, growth stage, aur moisture stress teeno automatically nikalta hai, phir
-   FAO-56 crop water balance se exact irrigation advisory deta hai.
-3. **Live demo**: Dashboard kholo, koi bhi field select karo — 2 second mein AI prediction
-   + confidence score + Hinglish advisory dikh jaata hai.
-4. **Scale**: Yeh architecture GEE ke saath national-scale par chal sakta hai (cloud-native,
-   stateless API, koi per-field manual analysis nahi).
-5. **Differentiation**: Existing tools sirf crop map ya sirf moisture map dete hain — yeh
-   ek hi pipeline mein dono + stage-aware advisory deta hai (jaisa PPT mein "Integrated
-   Intelligence" USP hai).
+Cleaning up product data isn't just about filling in blanks — it's
+about making sure what gets filled in is actually correct. So we
+followed three simple rules:
 
----
+1. **Use predictable logic wherever possible** — don't leave things to guesswork.
+2. **Always be able to explain a decision** — if something looks uncertain, say why.
+3. **Ask a human when unsure** — it's better to flag something than to guess wrong.
 
-## Known limitations (honestly documented for judges)
+## Why we built it this way
 
-- Satellite data **simulated hai** (deterministic, schema-matched) kyunki live GEE access
-  build environment mein nahi tha — real deployment se pehle `satellite_sim.py` ko GEE
-  calls se replace karna hoga (interface already designed for drop-in swap).
-- Crop classifier accuracy 76% hai (RandomForest, prototype-grade) — production mein
-  CNN-Transformer + real multi-year training data se improve hoga.
-- Dashboard map (Leaflet + CARTO tiles) internet access maangta hai judge ke laptop par
-  (normal WiFi/hotspot kaafi hai).
+We didn't want to build a tool that just makes things up to look
+finished. Instead, we combined a few simple, reliable pieces:
+predictable logic, smart text matching, standards checking, some
+AI-assisted writing, a trust score, and human review.
+
+That combination matters more for real business catalogs — because
+wrong information is worse than missing information.
+
+## Team
+
+**Team UniCode**
+Sunny Kumar — GitHub: https://github.com/SunnyAgrwl05
+
+## License
+
+Built as a hackathon project.
