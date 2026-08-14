@@ -1,0 +1,24 @@
+category,attribute,allowed_value
+Faucets,Mount Type,Deck Mount
+Faucets,Mount Type,Wall Mount
+Faucets,Mount Type,Countertop Mount
+Faucets,Handle Type,Single Handle
+Faucets,Handle Type,Double Handle
+Faucets,Handle Type,Touchless
+Faucets,Finish,Chrome
+Faucets,Finish,Brushed Nickel
+Faucets,Finish,Matte Black
+Faucets,Finish,Stainless Steel
+Faucets,Finish,Bronze
+Fittings,Connection Type,Threaded
+Fittings,Connection Type,Press
+Fittings,Connection Type,Solder
+Fittings,Connection Type,Push-Fit
+Fittings,Material,Brass
+Fittings,Material,Copper
+Fittings,Material,PVC
+Fittings,Material,Stainless Steel
+Laundry,Load Type,Front Load
+Laundry,Load Type,Top Load
+Laundry,Control Type,Electromechanical
+Laundry,Control Type,Electronic

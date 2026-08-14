@@ -1,0 +1,21 @@
+product_id,manufacturer,mpn,description,category,raw_specs
+P001,Moen,7000,Moen 7000 single handle kitchen faucet chrome finish deck mount,Faucets,Height: 15in Weight: 3lb
+P002,-- Unbranded --,CA87-BN,"Moen Align single-handle pull-down kitchen faucet, brushed nickel",Faucets,Height: 15.25 in
+P003,DELTA,9192-DST,"Delta Trinsic single handle faucet, matte black, wall mount",Faucets,24in reach
+P004,Kohler Company,K-596,Kohler Simplice pull-down kitchen faucet stainless steel touchless,Faucets,Weight: 4.5 lbs
+P005,American Std,7038.000,American Standard Colony two-handle kitchen faucet chrome,Faucets,Height 12 in
+P006,Speed Queen,SWT121,GE top load washer with electromechanical controls 120V,Laundry,Voltage: 120v Watts: 500w
+P007,GE Appliances,GTW465,GE top load washer electronic control 120 volts,Laundry,500 watts
+P008,Watts,LFN170M2,Watts brass threaded ball valve fitting 1/2 in,Fittings,0.5 in
+P009,NIBCO INC,C-9450,NIBCO copper press fitting elbow,Fittings,Weight: 0.25 lb
+P010,Viega GmbH,V-2971,Viega PEX push-fit coupling brass,Fittings,
+P011,Unknown,9192-XYZ,"Faucet, single handle, chrome, deck mount, GE brand appliance grade",Faucets,24 in
+P012,Zurn Industries,QT4,Zurn stainless steel press fitting,Fittings,
+P013,Grohe,33555,Grohe Eurosmart single lever basin mixer chrome wall mount,Faucets,Height: 6 in
+P014,Price Pfister,G529,Pfister Ashfield double handle bronze finish faucet,Faucets,Weight: 3.75 lb
+P015,-- Unbranded --,,"Generic replacement fitting, material unknown, no MPN available",Fittings,
+P016,Moen Inc,7000,Small faucet unit,Faucets,Weight: 1000 kg
+P017,Delta Faucet,RP50780,"Delta replacement cartridge, service part",Fittings,0.1 lb
+P018,Kohler,72218,Kohler Purist widespread bathroom faucet brushed nickel deck mount,Faucets,8 in spread
+P019,Speed Queen,LWN432,Speed Queen front load commercial washer electronic control,Laundry,240v
+P020,Amazon Basics,AB-1002,"Generic kitchen faucet sold on marketplace, chrome",Faucets,

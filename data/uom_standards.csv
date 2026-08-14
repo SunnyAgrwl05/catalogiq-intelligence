@@ -1,0 +1,18 @@
+raw_form,normalized_uom,format_template
+in,in,{value} in
+inch,in,{value} in
+inches,in,{value} in
+"""",in,{value} in
+lb,lb,{value} lb
+lbs,lb,{value} lb
+pound,lb,{value} lb
+pounds,lb,{value} lb
+kg,kg,{value} kg
+gpm,gpm,{value} gpm
+gal/min,gpm,{value} gpm
+v,V,{value} V
+volt,V,{value} V
+volts,V,{value} V
+w,W,{value} W
+watt,W,{value} W
+watts,W,{value} W
