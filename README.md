@@ -1,319 +1,181 @@
-# CatalogIQ
-**Evidence-Driven Product Intelligence for Industrial Commerce**
+# KrishiMitra — AI Crop Type, Moisture Stress Detection &amp; Irrigation Advisory
 
-Turns incomplete, messy industrial product data into structured, validated,
-commerce-ready product intelligence — with every field's value backed by
-visible evidence, a deterministic confidence score, and a clear decision
-(auto-approve, review, or investigate).
-
----
-
-## \u26A0\uFE0F Read this first: data provenance
-
-This build ships with **small, synthetic reference and sample data**, not the
-official UniHack files. No `Unihack_Sample_Dataset`, `200-Item Ground Truth`,
-`UNILOG UOM Standards`, LOV files, or manufacturer/brand master were provided
-when this was built, so fabricating results against them would have meant
-inventing accuracy numbers — which this project explicitly refuses to do.
-
-What's here instead, all clearly labeled in the UI itself:
-
-| File | What it is |
-|---|---|
-| `data/sample_input.csv` | 20 hand-written, intentionally messy sample product rows |
-| `data/sample_ground_truth.csv` | 20 hand-labeled expected values for the sample rows |
-| `data/synthetic_scale_1000.csv` | The 20 sample rows cycled to 1,000 rows, for a throughput demo only |
-| `data/manufacturer_brand_master.csv` | 12 real plumbing/appliance brands (Moen, Delta, Kohler, GE, etc.) as a lookup table |
-| `data/lov_master.csv`, `uom_standards.csv`, `decimal_fraction.csv` | Small synthetic reference tables |
-
-**To run this against the real benchmark:** drop the official UniHack files
-into `/data` using the same column names as the files above (see column
-headers in each CSV). No pipeline code needs to change — `pipeline/reference_data.py`
-and `app.py` read whatever's in `/data`. Every metric shown by the app
-(accuracy, throughput, confidence) is computed live from whatever data is
-present — nothing is hardcoded.
+**Team SpaceHack — Bharatiya Antariksh Hackathon 2026 (ISRO H2S)**
+Problem Statement: *AI-Driven Automated Crop type, Moisture Stress Detection and irrigation
+advisory Across Growth Stages Using Moderate Resolution Spectral Signatures
+(Optical &amp; Microwave Satellite Data)*
 
 ---
 
-## Problem
+## Kya bana hai (What this is)
 
-Industrial manufacturers manage product data across catalogs, PDFs, and
-websites. Turning that fragmented, incomplete data into accurate,
-structured, commerce-ready intelligence — with traceable, explainable
-outputs — is slow and error-prone at catalog scale.
-
-## Solution
-
-CatalogIQ resolves each product's manufacturer, brand, and category by
-gathering multiple independent evidence signals (input fields, MPN
-patterns, description text, prior human corrections), fusing them with a
-contradiction-aware engine (not a naive average), scoring the result with a
-deterministic confidence formula, and routing every field to
-auto-approval, human review, or investigation based on that score and
-whether the evidence actually agreed.
-
-## Why CatalogIQ (vs. a CSV cleaner)
-
-A CSV cleaner normalizes text. CatalogIQ additionally:
-- Shows **why** it chose a value (evidence graph, per field)
-- Detects when its own signals **disagree** and refuses to auto-publish
-- Scores confidence **per field**, not one fuzzy product-level number
-- Learns from human corrections via a transparent, inspectable memory
-  (explicitly *not* claimed as a trained ML model)
-- Refuses to invent values it can't support — returns `None` / "review
-  required" instead
-
-## Key Innovation
-
-1. **Evidence Graph** — every field's value carries its supporting evidence
-   as structured data (`pipeline/schemas.py: FieldResult`), not just a score.
-2. **Contradiction Engine** — evidence is grouped by claimed value and the
-   leader is compared against the runner-up; a close margin is flagged as a
-   real conflict, not blended away (`pipeline/contradiction.py`).
-3. **Field-Level Trust** — confidence, evidence, and decision are computed
-   independently per field; product-level trust is derived, not primary.
-4. **Human-in-the-Loop Review** — a queue of every non-auto-approved field,
-   with Accept / Correct / Mark Unknown actions.
-5. **Correction Memory** — corrections persist to `data/correction_memory.csv`
-   keyed by (MPN, input-manufacturer) signature and resurface as an
-   evidence signal on matching future products.
-6. **Ground Truth Benchmark** — accuracy is computed live against whatever
-   ground truth file is present; nothing is precomputed or cached as a claim.
-7. **Quality / Validation Gate** — LOV, UOM formatting, and a contextual
-   anomaly guard (e.g. flags a "1000 kg small faucet") run before a field
-   can be auto-approved.
-
-## Architecture
+Ek end-to-end working prototype jo PPT mein diye gaye system pipeline ko implement karta hai:
 
 ```
-RAW PRODUCT
-    -> preprocessing.normalize_product_row      (placeholder/null handling)
-    -> entity_resolution.resolve_*               (manufacturer, MPN, description)
-    -> evidence.gather_manufacturer_evidence      (builds Evidence[] )
-    -> correction_memory.lookup_correction        (adds a signal if a prior human fix matches)
-    -> contradiction.fuse_evidence                (consensus vs conflict)
-    -> validation.build_field_validation          (LOV / UOM / anomaly checks)
-    -> confidence.compute_field_confidence         (deterministic score)
-    -> confidence.decide                           (AUTO_APPROVED / REVIEW_REQUIRED / INVESTIGATE)
-    -> schemas.ProductResult                       (explainable, exportable)
+Data Ingestion → Preprocessing → Feature Extraction → AI Modeling → Decision Engine → Dashboard
 ```
 
-Modular by design — `pipeline/` has one file per concern (see structure
-below). `app.py` only wires the UI to these functions; it contains no
-business logic itself.
+| Stage | Implementation (this repo) | Production upgrade path |
+|---|---|---|
+| Data Ingestion | `model/satellite_sim.py` — deterministic, schema-matched Sentinel-2 (optical) + Sentinel-1 (SAR) simulator, crop-calendar aware | Swap for Google Earth Engine Python API pulling real Sentinel-2/Landsat/AWiFS + Sentinel-1/NISAR |
+| Preprocessing | Baked into simulator (cloud-free, terrain-corrected signal) | Sen2Cor atm. correction, FMask cloud masking, SNAP/ISCE SAR speckle filter |
+| Feature Extraction | NDVI, NDWI, MSI, VV/VH backscatter + ratio, growth_fraction | Same, computed from real rasters via GDAL/Rasterio/xarray |
+| AI Modeling | RandomForest crop classifier (76% acc) + RandomForest stress classifier (96% acc) — `model/train_model.py` | CNN-Transformer (crop ID) + LSTM-Attention (phenology), trained on multi-year labelled Sentinel time series |
+| Decision Engine | `model/decision_engine.py` — FAO-56 Kc-based crop water balance + stress-severity irrigation rules | Full CROPWAT/Optirrig integration + live rainfall forecast (OpenWeatherMap/NOAA) |
+| Output/Delivery | Web dashboard (Flask) + JSON API + Hinglish advisory text (SMS-ready) | Add Twilio SMS delivery, GeoTIFF/shapefile export |
+
+**Kyun simulated satellite data?** Live Google Earth Engine / Copernicus API access is
+sandbox mein available nahi tha (no internet in the build environment). Isliye
+`satellite_sim.py` ek deterministic, crop-calendar-aware generator hai jo Sentinel-2/-1
+jaisa hi feature schema deta hai — taaki AI model, decision engine, aur dashboard
+**exactly wahi** kaam karein jo real data ke saath karenge. Real access milte hi sirf
+`satellite_sim.simulate_field()` ko GEE calls se replace karna hai — baaki system untouched.
+
+---
+
+## Project structure
 
 ```
-app.py                  Streamlit UI (7 tabs)
-pipeline/
-  schemas.py             Evidence graph data model
-  reference_data.py       Loads & indexes manufacturer/LOV/UOM/fraction masters
-  preprocessing.py        Normalization, placeholder detection, measurement extraction
-  entity_resolution.py    Manufacturer/brand/MPN matching (exact/alias/fuzzy)
-  evidence.py             Evidence collection
-  contradiction.py        Consensus/conflict detection
-  confidence.py           Deterministic confidence scoring + decision routing
-  validation.py           LOV/UOM/anomaly validation
-  correction_memory.py    Persistent human-correction feedback log
-  enrichment.py           Orchestrates the full per-product pipeline
-evaluation/
-  scorer.py               Live accuracy computation against ground truth
-data/                    Synthetic sample + reference data (see table above)
-tests/                   46 unit tests, stdlib unittest (no pytest dependency)
+krishimitra/
+├── app.py                        # Flask backend + REST API
+├── requirements.txt
+├── Dockerfile
+├── model/
+│   ├── satellite_sim.py          # simulated Sentinel-2 + Sentinel-1 ingestion
+│   ├── generate_training_data.py # synthetic labelled dataset generator
+│   ├── train_model.py            # trains + saves crop_model.pkl, stress_model.pkl
+│   ├── decision_engine.py         # irrigation advisory rules (FAO-56 Kc)
+│   ├── crop_model.pkl / stress_model.pkl / metrics.json   (generated)
+├── templates/index.html          # dashboard UI
+├── static/style.css, script.js   # dashboard styling + Leaflet map logic
+└── tests/test_app.py             # pytest suite (12 tests)
 ```
 
-## Evidence Graph
+---
 
-Every field result looks like (from `pipeline/schemas.py`):
-```json
-{
-  "field": "manufacturer",
-  "value": "Moen Incorporated",
-  "confidence": 0.9831,
-  "evidence": [
-    {"type": "input_field", "value": "Moen Incorporated", "strength": 1.0, "signal": "Input manufacturer field 'Moen' matched via exact match"},
-    {"type": "mpn_pattern", "value": "Moen Incorporated", "strength": 0.8, "signal": "MPN '7000' matches known prefix pattern for Moen Incorporated"}
-  ],
-  "validation": {"lov": "n/a", "uom": "n/a", "rules": "n/a", "source": "n/a"},
-  "decision": "AUTO_APPROVED",
-  "is_conflict": false
-}
-```
-Displayed in the app's **Product Explainability** tab under "Why did
-CatalogIQ choose this?"
+## Current API (v2 — all original endpoints preserved + new ones added)
 
-## Contradiction Engine
+| Endpoint | Method | Purpose |
+|---|---|---|
+| `/api/fields` | GET | Original — pipeline results for the 6 demo fields |
+| `/api/analyze` | POST | Original — ad-hoc lat/lon analysis (now also logs to history) |
+| `/api/model-metrics` | GET | Original — crop/stress model accuracy |
+| `/api/health` | GET | Original — health check |
+| `/api/weather` | GET `?lat=&lon=` | **New** — OpenWeatherMap if `OPENWEATHER_API_KEY` set, else simulated |
+| `/api/search-location` | GET `?q=` | **New** — village/district/state search via Nominatim |
+| `/api/history` | GET `?crop=&urgency=&limit=` | **New** — past analyses (SQLite-backed) |
+| `/api/dashboard` | GET | **New** — aggregate stats across all demo fields |
 
-Evidence is grouped by claimed value and summed; the winner is compared to
-the runner-up with a normalized margin. Margin < 15% \u2192 flagged as a
-genuine conflict and routed to `INVESTIGATE`, regardless of how strong
-either individual signal looked. Verified in
-`tests/test_contradiction_and_confidence.py` on both a consensus case
-(three signals agreeing on "Speed Queen") and a real conflict case (MPN
-says Delta, description says GE — sample row `P011`).
+**Response format unchanged** for all four original endpoints — nothing that already
+worked was modified.
 
-## Trust Scoring
+## What's new in this version (Phase 1 + Phase 2)
 
-Deterministic formula in `pipeline/confidence.py`:
-`confidence = combine(evidence strengths for winning value) \u00d7 validation
-multiplier \u00d7 contradiction penalty`. Weights are named constants at the
-top of the file, not buried magic numbers. No random or LLM-sampled
-confidence values anywhere.
+- **Frontend**: glassmorphism dark space theme, animated sidebar with search/filter chips,
+  skeleton loading states, 4 map base layers (Dark/Satellite/Street/Terrain) + NDVI/Stress/Heatmap
+  overlay toggles, marker clustering, locate-me + fullscreen controls, risk badges + progress bars
+  in the detail panel, growth timeline visual, 4-step Analyze wizard (Location → Crop&Stage →
+  Weather → Analyze), animated pipeline architecture diagram + illustrative feature importance chart.
+- **Backend**: `model/gee.py` (Google Earth Engine module — auto-initializes if `earthengine-api`
+  is installed and credentials are set via `GEE_SERVICE_ACCOUNT`/`GEE_KEY_PATH`; otherwise falls
+  back to the existing simulator automatically, no code changes needed elsewhere), `model/weather.py`
+  (OpenWeatherMap, env var `OPENWEATHER_API_KEY`), `model/location_search.py` (Nominatim),
+  `model/history.py` (SQLite log of every `/api/analyze` call).
+- **Not yet implemented** (documented honestly, not silently skipped): PDF report generation,
+  JWT auth (farmer/admin login), PWA offline support, WhatsApp/SMS delivery, Chart.js trend
+  charts. These are straightforward additions on top of the current structure — ask if you want
+  them built out next.
 
-## Human-in-the-Loop
-
-**Human Review** tab lists every field that isn't `AUTO_APPROVED`, with
-Accept / Correct / Mark Unknown actions. A "Correct" action writes to
-`correction_memory.csv` immediately; the next engine run will pick it up
-as an evidence signal on matching products.
-
-## Correction Memory
-
-Explicitly a transparent lookup table (`pipeline/correction_memory.py`),
-keyed by `(field, normalized MPN, normalized input-manufacturer)`. **Not**
-a trained model — this is stated in the code, the UI, and here. Empty MPN
-signatures never match, to avoid over-matching on blank/blank rows.
-
-## Validation
-
-LOV (against `data/lov_master.csv`), UOM normalization + formatting
-(`"24in"` \u2192 flagged; `"24 in"` \u2192 passes), and a contextual anomaly guard
-(currently one configured rule: implausible faucet weight) all run before
-a field can be marked `AUTO_APPROVED`. Placeholder values (`"-- Unbranded --"`,
-`"N/A"`, etc.) are collapsed to `None` in preprocessing, never fabricated.
-
-## Evaluation
-
-`evaluation/scorer.py: evaluate()` computes field-level accuracy live —
-manufacturer, brand, category — by comparing pipeline output against a
-ground-truth CSV. **Measured result on the bundled 20-item sample (not the
-official 200):**
-
-- Overall field accuracy: **96.7%** (58/60 field comparisons)
-- Manufacturer accuracy: 95.0% (19/20)
-- Brand accuracy: 95.0% (19/20)
-- Category accuracy: 100.0% (20/20)
-- The one "error": sample row `P011`, where the pipeline correctly
-  detected a genuine MPN-vs-description conflict and routed it to
-  `INVESTIGATE` rather than guessing — the scorer counts this as incorrect
-  against a ground truth of `UNKNOWN` only because it still reports a
-  best-guess candidate value alongside the conflict flag.
-
-Re-run any time via the **Benchmark & Quality** tab — nothing here is cached
-as a permanent claim; the button recomputes from scratch.
-
-## Scalability
-
-Measured on the bundled 1,000-row **synthetic** file (20 sample rows cycled
-with new IDs — not the official 1,000-row dataset):
-
-- **1,000 products processed in ~0.26s (~3,800 products/sec), single process**
-
-This is single-machine, single-process Python throughput on this dev
-environment — not a production SKU/month claim. The pipeline is stateless
-per product (no shared mutable state between rows) and reference data is
-loaded once via `functools.lru_cache`, so it's architecturally suited to
-batching, multiprocessing, or horizontal scaling — but that scaling itself
-has not been benchmarked here, and the README makes no throughput claim
-beyond what was actually measured.
-
-## Tech Stack
-
-Python 3.12, Streamlit, pandas, stdlib `csv`/`difflib`/`dataclasses` (no
-compiled fuzzy-matching dependency — entity resolution uses
-`difflib.SequenceMatcher`, which is slower but has zero extra install risk).
-
-UI polish (`pipeline/icons.py`) uses hand-authored inline SVG line-icons —
-no external image files or CDN image fetches, so the demo never shows a
-broken icon if the venue's wifi is unreliable. Google Fonts (Inter) is
-loaded via CSS `@import`; if that request fails offline, the UI falls back
-to the system sans-serif font automatically — nothing breaks.
-
-## Installation
+## 1. Setup (ek baar)
 
 ```bash
+cd krishimitra
+python3 -m venv venv
+source venv/bin/activate          # Windows: venv\Scripts\activate
 pip install -r requirements.txt
 ```
 
-## Running Locally
+## 2. Model train karna (build)
 
 ```bash
-streamlit run app.py
+python3 model/generate_training_data.py   # 6000 synthetic labelled samples banata hai
+python3 model/train_model.py              # crop_model.pkl + stress_model.pkl train + save
 ```
-Then open the URL Streamlit prints (typically `http://localhost:8501`).
 
-## Dataset
+Expected output: crop model ~76% accuracy, stress model ~96% accuracy (`model/metrics.json` mein saved).
 
-See the provenance table at the top of this README. Replace `/data` CSVs
-with official files (same column names) for a real run.
+## 3. Run karna
 
-## Benchmark Results
-
-See "Evaluation" above — 96.7% field accuracy on the 20-item sample,
-computed live, reproducible via the Benchmark & Quality tab.
-
-## Tests
-
-46 unit tests, stdlib `unittest`, no external test framework dependency:
 ```bash
-python -m unittest discover -s tests -v
+python3 app.py
 ```
-Covers: placeholder detection, normalization, measurement extraction,
-manufacturer/MPN/description entity resolution (including a real bug found
-and fixed during development — "GE" wasn't matching inside description
-text due to an overly strict length guard, and a confidence-formula bug
-where two strong agreeing signals fell just short of the auto-approve
-threshold), contradiction detection (consensus vs. conflict vs. lopsided
-disagreement), confidence scoring bounds, LOV/UOM/anomaly validation, and
-correction-memory persistence and lookup.
 
-## Screenshots
+Browser mein kholein: **http://localhost:5000**
 
-Not included in this deliverable — run `streamlit run app.py` to see the
-live UI (Dashboard, Product Explainability, Contradictions, Human Review,
-Benchmark & Quality, Scale Test, Raw vs Enriched / Export).
+- **Field Map** tab — 6 demo fields (UP districts) live pipeline se analyzed, map par color-coded (NDVI health + stress urgency)
+- **Naya Field Analyze** tab — koi bhi lat/lon daalo, full pipeline live chalega
+- **Pipeline** tab — model accuracy metrics + architecture steps
 
-## Demo
+## 4. Test karna
 
-Suggested flow, using the bundled sample data:
-1. Dashboard tab \u2192 click **RUN INTELLIGENCE ENGINE** (uses the 20-row sample)
-2. Product Explainability tab \u2192 select `P001` \u2192 expand "manufacturer" to see the evidence graph
-3. Contradictions tab \u2192 shows `P011` (MPN says Delta, description says GE) flagged as a real conflict
-4. Human Review tab \u2192 correct a field, watch it write to correction memory
-5. Benchmark & Quality tab \u2192 click **Run benchmark now** \u2192 see live 96.7% accuracy
-6. Scale Test tab \u2192 click **Run 1,000-row scale test** \u2192 see live measured throughput
-7. Raw vs Enriched / Export tab \u2192 compare before/after, download enriched CSV
+```bash
+pip install pytest   # agar requirements.txt se pehle install nahi hua
+pytest tests/ -v
+```
 
-## Limitations
+12 tests cover: simulator determinism, decision-engine rules, aur poora Flask API
+(health check, fields list, analyze endpoint, error handling, model metrics).
+Sab pass hone chahiye.
 
-- Reference and ground-truth data are synthetic samples, not the official
-  UniHack files (see provenance table above) — swap them in before final
-  judging if you have them.
-- Category is currently a **passthrough** from input with no independent
-  classifier — its confidence is deliberately capped at 70% to reflect
-  that honestly, rather than displaying false certainty.
-- No live web/manufacturer-site sourcing is implemented — `validation.source`
-  is `n/a` throughout. The evidence-graph structure has a slot for source
-  evidence so this can be added later without a redesign.
-- Entity resolution uses `difflib` (stdlib) rather than a dedicated
-  fuzzy-matching library; adequate for the current reference-master size
-  (12 manufacturers) but would need `rapidfuzz` or similar at real catalog
-  scale (thousands of manufacturers) for both speed and match quality.
-- Decimal\u2192fraction conversion table exists but isn't yet wired into the
-  measurement-formatting path in `enrichment.py` — the lookup function
-  works and is unit-tested at the `reference_data` level, but no field
-  currently calls it end-to-end.
-- Scale test throughput (~3,800 products/sec) is single-process on one
-  dev machine; not benchmarked under Streamlit's request/response cycle,
-  concurrent load, or at the full official 1,000-row file if it differs
-  in structure from the synthetic one bundled here.
+## 5. Quick API check (copy-paste)
 
-## Future Scope
+```bash
+curl http://localhost:5000/api/health
+curl http://localhost:5000/api/fields
+curl -X POST http://localhost:5000/api/analyze \
+  -H "Content-Type: application/json" \
+  -d '{"lat": 26.85, "lon": 80.95, "crop": "Wheat"}'
+```
 
-- Wire the decimal-fraction table into measurement formatting
-- Add source-discovery evidence (manufacturer domain matching) behind an
-  explicit "source status: not configured" flag until real web access is
-  available
-- Category classifier trained/rule-built from LOV + description signals
-- Swap `difflib` for `rapidfuzz` if/when reference master grows large
-- Batch/multiprocessing worker pool for catalogs beyond single-process
-  throughput needs
+## 6. Deploy karna
+
+**Option A — Docker (recommended for demo/judges' laptop):**
+```bash
+docker build -t krishimitra .
+docker run -p 5000:5000 krishimitra
+```
+Browser: http://localhost:5000
+
+**Option B — Cloud (Render / Railway / any Python host):**
+- Push repo, set start command: `python3 app.py`
+- Add build command: `pip install -r requirements.txt && python3 model/generate_training_data.py && python3 model/train_model.py`
+- `PORT` env var automatically respected by `app.py`
+
+---
+
+## Presentation mein kya bolna hai (talking points)
+
+1. **Problem**: Kisan ko pata nahi chalta ki field mein kaunsi fasal hai, kaunse growth
+   stage mein hai, aur kab paani chahiye — satellite data available hai par usable form mein nahi.
+2. **Solution**: Ek single AI pipeline jo Optical (NDVI/NDWI/MSI) + SAR (VV/VH) fuse karke
+   crop type, growth stage, aur moisture stress teeno automatically nikalta hai, phir
+   FAO-56 crop water balance se exact irrigation advisory deta hai.
+3. **Live demo**: Dashboard kholo, koi bhi field select karo — 2 second mein AI prediction
+   + confidence score + Hinglish advisory dikh jaata hai.
+4. **Scale**: Yeh architecture GEE ke saath national-scale par chal sakta hai (cloud-native,
+   stateless API, koi per-field manual analysis nahi).
+5. **Differentiation**: Existing tools sirf crop map ya sirf moisture map dete hain — yeh
+   ek hi pipeline mein dono + stage-aware advisory deta hai (jaisa PPT mein "Integrated
+   Intelligence" USP hai).
+
+---
+
+## Known limitations (honestly documented for judges)
+
+- Satellite data **simulated hai** (deterministic, schema-matched) kyunki live GEE access
+  build environment mein nahi tha — real deployment se pehle `satellite_sim.py` ko GEE
+  calls se replace karna hoga (interface already designed for drop-in swap).
+- Crop classifier accuracy 76% hai (RandomForest, prototype-grade) — production mein
+  CNN-Transformer + real multi-year training data se improve hoga.
+- Dashboard map (Leaflet + CARTO tiles) internet access maangta hai judge ke laptop par
+  (normal WiFi/hotspot kaafi hai).
