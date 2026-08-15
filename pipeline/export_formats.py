@@ -9,6 +9,7 @@ enrichment pipeline so additional platforms can be added later.
 from __future__ import annotations
 
 from dataclasses import dataclass, field
+from typing import Callable
 
 from pipeline.schemas import ProductResult
 
@@ -18,7 +19,7 @@ class ExportFormat:
     name: str
     description: str
     columns: list[str]
-    mapper: callable
+    mapper: Callable[[ProductResult], dict]
 
 
 def _build_generic_row(r: ProductResult) -> dict:
