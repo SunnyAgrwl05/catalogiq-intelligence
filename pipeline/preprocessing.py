@@ -6,6 +6,7 @@ and turning free-text "raw_specs" into structured (value, unit) pairs.
 from __future__ import annotations
 
 import re
+from typing import Any
 
 PLACEHOLDER_PATTERNS = [
     r"^--\s*unbranded\s*--$",
@@ -53,7 +54,7 @@ _MEASURE_RE = re.compile(
 )
 
 
-def extract_measurements(text: str | None) -> list[dict]:
+def extract_measurements(text: str | None) -> list[dict[str, str]]:
     """Pull (raw_value, raw_unit) pairs out of free-text spec strings.
 
     Returns a list of dicts: {"raw_value": "24", "raw_unit": "in"}.
@@ -62,20 +63,20 @@ def extract_measurements(text: str | None) -> list[dict]:
     """
     if not text:
         return []
-    results = []
+    results: list[dict[str, str]] = []
     for m in _MEASURE_RE.finditer(text):
         results.append({"raw_value": m.group("value"), "raw_unit": m.group("unit")})
     return results
 
 
-def normalize_product_row(row: dict) -> dict:
+def normalize_product_row(row: dict[str, Any]) -> dict[str, Any]:
     """Apply text normalization + placeholder collapsing to a raw input row.
 
     Returns a new dict with the same keys, normalized. Fields that were
     placeholders become None. Nothing is invented here -- missing stays
     missing, per the content-quality rule.
     """
-    normalized = {}
+    normalized: dict[str, Any] = {}
     for key, value in row.items():
         if key in ("product_id",):
             normalized[key] = clean_text(value)

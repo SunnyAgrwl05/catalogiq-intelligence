@@ -39,7 +39,7 @@ def normalize_uom(raw_value: str, raw_unit: str, ref: ReferenceData) -> tuple[st
     return display, None
 
 
-def validate_uom_formatting(display_value: str) -> tuple[ValidationState, str | None]:
+def validate_uom_formatting(display_value: str | None) -> tuple[ValidationState, str | None]:
     """Check the official formatting rule: '24 in' not '24in' (space
     required between number and unit)."""
     if re.match(r"^\d+(\.\d+)?[a-zA-Z%]", display_value or ""):

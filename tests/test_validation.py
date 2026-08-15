@@ -46,6 +46,11 @@ class TestValidation(unittest.TestCase):
         state2, note2 = validate_uom_formatting("24 in")
         self.assertEqual(state2, ValidationState.PASSED)
 
+    def test_uom_formatting_tolerates_missing_value(self):
+        state, note = validate_uom_formatting(None)
+        self.assertEqual(state, ValidationState.PASSED)
+        self.assertIsNone(note)
+
     def test_contextual_anomaly_flags_impossible_faucet_weight(self):
         note = check_contextual_anomaly("Faucets", "weight", "1000", "kg")
         self.assertIsNotNone(note)
