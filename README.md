@@ -142,7 +142,19 @@ A field result contains the selected value, confidence, supporting evidence, val
 
 The app exposes this information in **Product Explainability** so reviewers can understand why a value was selected.
 
+### How confidence is calculated
+
+CatalogIQ turns the available evidence for a field into a confidence score between `0.0` and `1.0`. The score is deterministic: the same evidence, validation results, and conflict state always produce the same result.
+
+- **Evidence agreement sets the starting score.** Evidence that supports the selected value contributes to its support. When multiple signals agree, their support increases confidence with diminishing returns so that repeated agreement helps without pushing the score above `1.0`. If there is no usable evidence, confidence is `0.0`.
+- **Validation failures reduce confidence.** Each failed validation check (LOV, UOM, rules, or source validation) halves the current validation multiplier. Multiple failed checks compound, so fields with several validation problems are penalized more heavily.
+- **Conflicts reduce confidence further.** The contradiction engine reports a conflict severity between `0.0` and `1.0`. Higher severity applies a larger penalty, up to a 50% reduction in confidence. A field that is explicitly marked as conflicting is routed to `INVESTIGATE` even if its numeric confidence would otherwise be high enough for another decision.
+- **The final score determines the normal routing.** When there is no explicit conflict, confidence of `0.90` or higher is `AUTO_APPROVED`, confidence from `0.65` up to `0.90` is `REVIEW_REQUIRED`, and anything below `0.65` is `INVESTIGATE`.
+
+In short, strong agreeing evidence raises confidence, while validation failures and contradictory evidence lower it. The decision layer then uses the resulting score together with the conflict flag to decide whether the field can be accepted automatically, should be reviewed by a person, or needs investigation.
+
 ---
+
 
 ## Human Review & Correction Memory
 
