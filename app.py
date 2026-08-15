@@ -192,7 +192,8 @@ def read_uploaded_or_sample(uploaded_file) -> list[dict]:
 
 
 def load_ground_truth() -> list[dict]:
-    with open(f"{DATA_DIR}/sample_ground_truth.csv", newline="", encoding="utf-8-sig") as f:
+    path = os.environ.get("CATALOGIQ_GROUND_TRUTH_PATH", f"{DATA_DIR}/sample_ground_truth.csv")
+    with open(path, newline="", encoding="utf-8-sig") as f:
         return list(csv.DictReader(f))
 
 

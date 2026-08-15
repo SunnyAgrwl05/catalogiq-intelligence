@@ -225,6 +225,19 @@ streamlit run app.py
 
 Open the local URL printed by Streamlit, typically `http://localhost:8501`.
 
+### Environment Variables
+
+| Variable | Description | Default |
+|---|---|---|
+| `CATALOGIQ_GROUND_TRUTH_PATH` | Path to a custom ground-truth CSV for benchmarking | `data/sample_ground_truth.csv` |
+
+Example:
+
+```bash
+export CATALOGIQ_GROUND_TRUTH_PATH=/path/to/my/ground_truth.csv
+streamlit run app.py
+```
+
 ---
 
 ## Demo Flow
