@@ -1,410 +1,288 @@
-# CatalogIQ — Turning Messy Product Data into Clean, Ready-to-Use Records
+CatalogIQ
 
-This project takes messy, incomplete product data (like a spreadsheet
-of part numbers with missing or inconsistent info) and turns it into
-clean, complete, standardized product listings — the kind a big
-catalog or online store actually needs.
+Evidence-Driven Product Intelligence for Industrial Commerce
 
-Built for a real problem: Unilog needs to clean and complete around
-150,000 products every month.
+Built by Team UniCode · UniHack Hackathon 2026
 
-**Try it live:** https://catalogiq-intelligence-yr8ctj9uouksvm3zbjhv8b.streamlit.app/
-**Demo video:** _[add link here]_
+Live
+Demo
+· Source Code
 
----
+CatalogIQ turns incomplete, messy industrial product data into
+structured, validated, commerce-ready product intelligence. Every
+important output is backed by visible evidence, a deterministic
+confidence score, and a clear decision: auto-approve, review, or
+investigate.
 
-## What we focused on
+⚠️ Data Provenance
 
-The challenge had 9 steps in total. We were told upfront: *"You don't
-need to do all 9 steps perfectly — doing 2-3 steps really well beats
-doing all 9 half-heartedly."* So that's what we did.
+This repository ships with small synthetic/sample data, not the
+official UniHack benchmark files.
 
-**Fully built, tested, and working in the live demo:**
-- Cleaning up messy part numbers (removing junk text, extra spaces, placeholder values)
-- Matching manufacturer/brand names correctly, even when they're spelled differently
-- Checking product details against an approved list of correct values
-- Converting measurements into a standard format (like turning "0.5 inch" into "1/2 inch")
-- Writing 5 different versions of each product description, all within strict length limits
-- Giving every product a trust score, and flagging anything that needs a human to double-check it
+File                                   Purpose
 
-**Planned but not built yet (see Roadmap below):**
-- Automatically sorting products into categories (right now we use simple keyword matching, not smart AI-based sorting)
-- Automatically searching manufacturer websites for extra product specs
-- Automatically finding product images, spec sheets, and safety documents
+data/sample_input.csv                20 intentionally messy sample
+product rows
 
-We didn't fake these parts. If something isn't built yet, the README
-says so clearly — because guessing wrong is worse than saying "not
-done yet."
+data/sample_ground_truth.csv         Expected values for the bundled
+sample
 
----
+data/synthetic_scale_1000.csv        1,000-row throughput demonstration
 
-## How it works (step by step)
+data/manufacturer_brand_master.csv   Sample manufacturer/brand reference
+data
 
-```
-                     ┌─────────────────────────┐
-  Messy CSV file ──▶ │ 1. Clean up the data     │
-                     │    (remove junk text)    │
-                     └───────────┬─────────────┘
-                                 ▼
-                     ┌─────────────────────────┐
-                     │ 2. Match brand/          │
-                     │    manufacturer names    │
-                     └───────────┬─────────────┘
-                                 ▼
-                     ┌─────────────────────────┐
-                     │ 3. Sort into categories  │  (basic version now,
-                     │                          │   smarter AI later)
-                     └───────────┬─────────────┘
-                                 ▼
-                     ┌─────────────────────────┐
-        (planned) ──▶│ 4. Search manufacturer   │
-                     │    websites for specs    │
-                     └───────────┬─────────────┘
-                                 ▼
-                     ┌─────────────────────────┐
-                     │ 5. Check values against  │
-                     │    the approved list     │
-                     └───────────┬─────────────┘
-                                 ▼
-                     ┌─────────────────────────┐
-                     │ 6. Standardize units     │
-                     │    (e.g. 0.5in → 1/2in)  │
-                     └───────────┬─────────────┘
-                                 ▼
-                     ┌─────────────────────────┐
-                     │ 7. Write 5 product       │
-                     │    descriptions          │
-                     └───────────┬─────────────┘
-                                 ▼
-                     ┌─────────────────────────┐
-        (planned) ──▶│ 8. Find images, PDFs,    │
-                     │    safety documents      │
-                     └───────────┬─────────────┘
-                                 ▼
-                     ┌─────────────────────────┐
-                     │ 9. Give a trust score +  │
-                     │    flag for review       │
-                     └───────────┬─────────────┘
-                                 ▼
-                     Final, clean product record
-```
+data/lov_master.csv                  Sample list-of-values reference
+data
 
-## What it does — in detail
+data/uom_standards.csv               Sample unit-of-measure standards
 
-### 1. Cleaning up messy text
+No official benchmark results are claimed here.
 
-Real product data is often messy — extra spaces, weird symbols,
-placeholder text like "N/A". This step cleans all of that up first.
+Problem
 
-**Example:**
-```
-Before: "  ABC-123 / N/A "
-After:  "ABC-123"
-```
+Industrial product information is often fragmented, incomplete,
+inconsistent, and difficult to validate at catalog scale.
 
-### 2. Matching brand names correctly
+CatalogIQ answers:
 
-Sometimes a brand is written differently across different files —
-like "ACME" vs "ACME INC." This step matches them to one correct,
-official name, and tells you how confident it is about the match.
+What manufacturer is this product associated with?
 
-**Example:**
-```
-Input:     "ACME INC."
-Matched to: "ACME"
-Confidence: 94%  (match type: close but not exact)
-```
+What brand and category are most likely?
 
-If the match isn't confident enough, it gets flagged so a person can
-check it — the tool never just guesses silently.
+What evidence supports that decision?
 
-### 3. Sorting products into categories
+Are the available signals consistent or contradictory?
 
-Right now, this uses simple keyword matching (e.g. if the text says
-"hex bolt," it's tagged as a Bolt under Fasteners).
+Should the result be automatically approved or sent for human
+review?
 
-**Example:**
-```
-"stainless steel hex bolt"  →  Fasteners → Bolts
-```
+Solution
 
-**Future improvement:** use smarter AI-based matching instead of just
-keywords, so it understands meaning, not just exact words.
+Normalize raw product fields and placeholders.
 
-### 4. Searching manufacturer websites (not built yet)
+Resolve manufacturer, brand, and MPN.
 
-The idea: automatically visit a manufacturer's website, search for
-the exact product, and pull extra details from there.
+Gather multiple evidence signals.
 
-This part isn't switched on yet — we didn't want to risk it failing
-live during the demo. But the groundwork is already there: there are
-spots ready in the data to store manufacturer links and reference
-URLs once this is built.
+Fuse evidence while detecting contradictions.
 
-### 5. Checking values against an approved list
+Validate against LOV, UOM, and anomaly rules.
 
-Some fields (like material type) need to match an official, approved
-list of values — this step checks for and fixes small mistakes like
-typos.
+Calculate deterministic field-level confidence.
 
-**Example:**
-```
-Input:    "Stainless Steal"
-Correct:  "Stainless Steel"
-Result:   Automatically corrected (or flagged if unsure)
-```
+Route to AUTO_APPROVED, REVIEW_REQUIRED, or INVESTIGATE.
 
-### 6. Standardizing measurements
+Export enriched, explainable product intelligence.
 
-Different files describe sizes differently. This step makes them all
-consistent — including converting decimals into fractions.
+Key Innovations
 
-**Example:**
-```
-Input:      0.5 in
-Standard:   1/2 in
-```
+Innovation                          Description
 
-It supports converting any fraction from 1/64 up to 63/64.
+Evidence Graph                  Every field result contains
+structured supporting evidence.
 
-### 7. Writing product descriptions
+Contradiction Engine            Detects genuine conflicts instead
+of averaging them away.
 
-The tool writes 5 different versions of a product description, each
-one following a strict character limit — because catalogs and online
-stores often have tight length rules for descriptions. It writes
-directly within that limit, instead of writing something long and
-then cutting it short (which usually looks broken).
+Field-Level Trust               Confidence and decisions are
+calculated independently per field.
 
-### 8. Finding images and documents (not built yet)
+Human-in-the-Loop               Non-auto-approved fields are
+surfaced for review.
 
-The plan is to automatically find product images, spec sheets (PDFs),
-and safety data sheets. This is on the roadmap, not built yet.
+Correction Memory               Human corrections can become future
+evidence for matching products.
 
-### 9. Trust score + human review
+Live Benchmarking               Evaluation is computed from the
+available ground-truth file.
 
-Every product gets a score out of 100 showing how trustworthy the
-final data is, based on things like: how confident the brand match
-was, whether values passed the approved list check, and how complete
-the descriptions are.
+Architecture
 
-**Example:**
-```
-Trust Score: 94%
+RAW PRODUCT
+    ↓
+preprocessing
+    ↓
+entity resolution
+    ↓
+evidence gathering
+    ↓
+correction memory
+    ↓
+contradiction detection
+    ↓
+validation
+    ↓
+confidence scoring
+    ↓
+decision routing
+    ↓
+EXPLAINABLE / REVIEWABLE / EXPORTABLE OUTPUT
 
-Brand match accuracy       98%
-Approved value check      100%
-Unit conversion accuracy  100%
-Description quality        92%
-How complete the data is   80%
-```
+Project Structure
 
-It's not just a number — you can see exactly why it got that score.
-
-## When something needs a human to check it
-
-If the trust score is too low, the product gets flagged automatically
-with a plain-English reason.
-
-**Example:**
-```
-Trust Score: 61%
-Needs a human to check: YES
-
-Why:
-The brand match wasn't confident enough.
-Some information is missing.
-```
-
-This way, the system never quietly inserts data it isn't sure about —
-it asks for help instead.
-
-## How AI is used (and where it's kept out)
-
-We kept AI (like Claude) out of the parts that need to be 100%
-reliable. Things like matching brand names, converting units, and
-checking approved values are all done with plain, predictable logic
-— not AI guesses.
-
-AI is only used, optionally, for writing extra marketing-style text
-(like a catchy product blurb) — never for the core structured data.
-
-**Why we did it this way:**
-- Less risk of AI making things up
-- Lower cost (no AI calls needed for most of the work)
-- Faster processing
-- The whole tool still works even without internet or an AI service
-
-You can turn on AI-written marketing text by adding an
-`ANTHROPIC_API_KEY`, but everything else works fine without it.
-
-## What the demo shows you
-
-- **Accuracy** — how closely the results match a known correct answer set
-- **Description length checks** — confirms every description stays within its limit
-- **Brand matching results** — how many were exact matches, close matches, or no match
-- **How many products need human review**, and why
-
-## Tests
-
-The project includes automated tests that check all the core logic —
-text cleanup, brand matching, unit conversion, description limits,
-approved value checks, and trust scoring.
-
-Run them with:
-
-```bash
-pytest -q
-```
-
-## Project folders
-
-```
 catalogiq-intelligence/
-│
-├── pipeline/              # the main logic
-│   ├── parsing.py          # step 1: cleanup
-│   ├── normalize.py        # steps 2 & 6: brand matching + units
-│   ├── describe_gen.py     # step 7: descriptions
-│   ├── validator.py        # steps 5 & 9: approved values + trust score
-│   └── orchestrator.py     # runs everything together
-│
-├── data/                  # reference data used by the pipeline
-│   ├── manufacturer_list.csv
-│   ├── uom_standards.csv
-│   ├── decimal_fraction.csv
-│   ├── lov.csv
-│   ├── sample_input.csv
-│   └── ground_truth.csv
-│
-├── evaluation/
-│   └── accuracy_scorer.py
-│
-├── tests/
-│
-├── app.py                 # the Streamlit app you interact with
+├── app.py
 ├── requirements.txt
-└── README.md
-```
+├── data/
+├── pipeline/
+│   ├── schemas.py
+│   ├── reference_data.py
+│   ├── preprocessing.py
+│   ├── entity_resolution.py
+│   ├── evidence.py
+│   ├── contradiction.py
+│   ├── confidence.py
+│   ├── validation.py
+│   ├── correction_memory.py
+│   ├── enrichment.py
+│   └── icons.py
+├── evaluation/
+│   └── scorer.py
+└── tests/
 
-## Running it on your own computer
+Evidence Graph
 
-Clone the project:
+A field result contains the selected value, confidence, supporting
+evidence, validation information, and decision.
 
-```bash
+{
+  "field": "manufacturer",
+  "value": "Moen Incorporated",
+  "confidence": 0.9831,
+  "decision": "AUTO_APPROVED",
+  "is_conflict": false
+}
+
+The app exposes this information in Product Explainability so
+reviewers can understand why a value was selected.
+
+Human Review & Correction Memory
+
+The Human Review section supports:
+
+Accept
+
+Correct
+
+Mark Unknown
+
+Corrections are stored in a transparent lookup table keyed by field,
+normalized MPN, and input manufacturer. This is correction memory, not
+a trained ML model.
+
+Validation
+
+CatalogIQ includes:
+
+LOV allowed-value checks
+
+UOM normalization and formatting
+
+Placeholder detection
+
+Contextual anomaly checks
+
+Unsupported values can be routed for review instead of being fabricated.
+
+Evaluation
+
+The bundled sample currently reports:
+
+Metric                                 Result
+
+Overall field accuracy      96.7% (58/60)
+Manufacturer accuracy       95.0% (19/20)
+Brand accuracy              95.0% (19/20)
+Category accuracy          100.0% (20/20)
+
+These figures are for the bundled 20-item sample only, not official
+UniHack benchmark results.
+
+Scalability
+
+The bundled 1,000-row synthetic file is a throughput demonstration.
+
+Measured locally: ~1,000 products in ~0.26 seconds (~3,800
+products/sec).
+
+This is a single-process development-environment measurement, not a
+production SLA.
+
+Tech Stack
+
+Python 3.12 · Streamlit · pandas · Python standard library · csv ·
+difflib · dataclasses
+
+Running Locally
+
 git clone https://github.com/SunnyAgrwl05/catalogiq-intelligence.git
 cd catalogiq-intelligence
-```
-
-Install what it needs:
-
-```bash
+python3 -m venv venv
+source venv/bin/activate
 pip install -r requirements.txt
-```
-
-Start the app:
-
-```bash
 streamlit run app.py
-```
 
-Then upload a CSV file with these columns: `Mfg_Part_Num, Part_Desc,
-E1_Brand, Unilog_Brand, DIB_Brand, Part_Manuf` — or just use the
-sample file that's already included. The app will clean and enrich
-the data, show you the results, compare them to known correct
-answers, and flag anything that needs review.
+Open the local URL printed by Streamlit, typically
+http://localhost:8501.
 
-## What a CSV input looks like
+Demo Flow
 
-```csv
-Mfg_Part_Num,Part_Desc,E1_Brand,Unilog_Brand,DIB_Brand,Part_Manuf
-ABC-123,1/2 SS HEX BOLT,ACME,ACME,ACME,ACME
-XYZ-456,3.5 IN PIPE CLAMP,ACME,ACME,ACME,ACME
-```
+Dashboard → click RUN INTELLIGENCE ENGINE.
 
-## What you get back
+Product Explainability → inspect the evidence graph.
 
-A cleaned-up version of each product with: correct manufacturer name,
-correct brand, category, standardized measurements, 5 description
-formats, approved value checks, a trust score, whether it needs human
-review (and why), and space for reference links.
+Contradictions → inspect conflicting signals.
 
-## How this could scale up to handle way more products
+Human Review → review or correct a field.
 
-To go from a small demo to handling hundreds of thousands of products
-a month, here's the plan:
+Benchmark & Quality → run the live benchmark.
 
-1. **Run things in parallel** — the cleanup, brand matching, unit
-   conversion, and description steps don't depend on AI, so they can
-   run on multiple computers at once.
-2. **Remember past lookups** — once a brand name or approved value has
-   been checked once, save the result so it doesn't need to be
-   checked again.
-3. **Handle website searching separately** — since visiting manufacturer
-   websites takes longer, that part runs on its own, at its own pace,
-   without slowing down everything else.
-4. **Keep AI use limited and optional** — since AI is only used for
-   extra marketing text, the main process never has to wait on it.
+Scale Test → run the 1,000-row throughput test.
 
-## What's next (roadmap)
+Raw vs Enriched / Export → compare and export the enriched
+catalog.
 
-**Already done:**
-- [x] Cleaning up messy text
-- [x] Brand/manufacturer matching
-- [x] Approved value checking
-- [x] Unit standardization
-- [x] 5 description formats with length limits
-- [x] Trust scoring + human review flagging
-- [x] Working demo app
-- [x] Automated tests
+Tests
 
-**Coming next:**
-- [ ] Smarter, AI-based category sorting
-- [ ] Automatic manufacturer website searching
-- [ ] Automatic image/document finding
-- [ ] Full-size approved values list
+python -m unittest discover -s tests -v
 
-**After that — scaling up:**
-- [ ] Splitting work across multiple computers
-- [ ] Faster processing queue
-- [ ] Shared memory/caching system
-- [ ] Monitoring so we know if something breaks
-- [ ] Automatic retry when something fails
-- [ ] A dashboard to track large batches
+The tests cover normalization, placeholders, measurement extraction,
+entity resolution, contradiction detection, confidence scoring,
+validation, and correction memory.
 
-## Being upfront about what's missing
+Limitations
 
-- **Website searching** isn't switched on yet — it's built into the
-  design, just not turned on for this version.
-- **Finding images/documents** isn't built yet.
-- **Category sorting** is basic keyword matching for now, not smart AI sorting.
-- **Reference data** used here is a smaller sample version — the real
-  system would use much larger, complete versions of the same files.
+Bundled reference and ground-truth data are synthetic/sample data.
 
-## Our approach, in plain terms
+Category does not currently use a fully trained independent
+classifier.
 
-Cleaning up product data isn't just about filling in blanks — it's
-about making sure what gets filled in is actually correct. So we
-followed three simple rules:
+Live manufacturer-site sourcing is not enabled in the bundled
+pipeline.
 
-1. **Use predictable logic wherever possible** — don't leave things to guesswork.
-2. **Always be able to explain a decision** — if something looks uncertain, say why.
-3. **Ask a human when unsure** — it's better to flag something than to guess wrong.
+difflib is suitable for the current small reference set but may
+need a more scalable matcher for large catalogs.
 
-## Why we built it this way
+The scale result is a local single-process measurement.
 
-We didn't want to build a tool that just makes things up to look
-finished. Instead, we combined a few simple, reliable pieces:
-predictable logic, smart text matching, standards checking, some
-AI-assisted writing, a trust score, and human review.
+Future Scope
 
-That combination matters more for real business catalogs — because
-wrong information is worse than missing information.
+Verified manufacturer/source-discovery evidence
 
-## Team
+Stronger category classification
 
-**Team UniCode**
-Sunny Kumar — GitHub: https://github.com/SunnyAgrwl05
+Scalable fuzzy matching for large reference masters
 
-## License
+Batch/multiprocessing workers
 
-Built as a hackathon project.
+Expanded validation and measurement rules
+
+Official benchmark integration when available
+
+::: {align="center"}
+
+CatalogIQ
+
+Built with ❤️ by Sunny Kumar & Team UniCode · UniHack Hackathon 2026
+:::
