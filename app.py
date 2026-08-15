@@ -17,6 +17,7 @@ import streamlit as st
 from evaluation.scorer import error_category_summary, evaluate, manufacturer_confusion_pairs
 from pipeline.correction_memory import load_corrections, record_correction
 from pipeline.custom_rules import load_rules_file, merge_custom_rules_into_ref
+from pipeline.duplicate_detection import detect_duplicates
 from pipeline.enrichment import enrich_catalog
 from pipeline.export_formats import EXPORT_FORMATS, export_rows, list_formats
 from pipeline.icons import LOGO_MARK, icon
@@ -229,7 +230,7 @@ with st.sidebar:
         "Navigate",
         [
             "Dashboard", "Product Explainability", "Contradictions",
-            "Human Review", "Benchmark & Quality", "Health Trend",
+            "Human Review", "Duplicates", "Benchmark & Quality", "Health Trend",
             "Scale Test", "Raw vs Enriched / Export",
         ],
         label_visibility="collapsed",
@@ -495,6 +496,67 @@ elif page == "Human Review":
                             predicted_value=fr.value, corrected_value="UNKNOWN", reason="Marked unknown by reviewer",
                         )
                         st.success("Marked unknown and saved to correction memory.")
+
+# ============================================================ DUPLICATES PAGE
+elif page == "Duplicates":
+    st.subheader("Duplicate Product Detection")
+    results = st.session_state.results
+    if not results:
+        st.info("Run the intelligence engine on the Dashboard page first.")
+    else:
+        st.caption(
+            f"Scanning {len(results)} products for likely duplicates based on "
+            "manufacturer, MPN, and description similarity."
+        )
+        threshold = st.slider(
+            "Similarity threshold", min_value=0.3, max_value=1.0, value=0.5, step=0.05,
+            help="Higher values detect fewer but more confident duplicate pairs.",
+        )
+        groups = detect_duplicates(results, similarity_threshold=threshold)
+
+        if not groups:
+            st.success("No duplicate candidates found.")
+        else:
+            st.warning(f"Found {len(groups)} candidate duplicate group(s).")
+            for group in groups:
+                with st.container(border=True):
+                    st.markdown(
+                        f"**Group {group.group_id + 1}** — "
+                        f"{len(group.product_ids)} products — "
+                        f"best similarity: {group.best_similarity:.2f}"
+                    )
+                    cols = st.columns([2, 2, 2])
+                    for i, pid in enumerate(group.product_ids):
+                        col = cols[i % 3]
+                        product = next((r for r in results if r.product_id == pid), None)
+                        if product:
+                            mfg = product.fields.get("manufacturer")
+                            brand = product.fields.get("brand")
+                            cat = product.fields.get("category")
+                            col.markdown(
+                                f"**{pid}**  \n"
+                                f"Manufacturer: `{mfg.value if mfg else '—'}`  \n"
+                                f"Brand: `{brand.value if brand else '—'}`  \n"
+                                f"Category: `{cat.value if cat else '—'}`"
+                            )
+                    if group.candidates:
+                        st.markdown("**Evidence:**")
+                        for c in group.candidates:
+                            st.write(
+                                f"- `{c.product_a_id}` vs `{c.product_b_id}` "
+                                f"(similarity: {c.similarity:.2f}): {'; '.join(c.evidence)}"
+                            )
+
+                    action_key = f"dup_group_{group.group_id}"
+                    action = st.selectbox(
+                        "Review action",
+                        ["—", "Accept as duplicate", "Not a duplicate"],
+                        key=action_key, label_visibility="collapsed",
+                    )
+                    if action == "Accept as duplicate":
+                        st.info("Accepted as duplicate. (Future: merge records.)")
+                    elif action == "Not a duplicate":
+                        st.info("Marked as not a duplicate.")
 
 # ============================================================ BENCHMARK PAGE
 elif page == "Benchmark & Quality":
