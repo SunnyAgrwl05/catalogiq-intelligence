@@ -33,6 +33,7 @@ class EvidenceType(str, Enum):
     INPUT_FIELD = "input_field"
     CORRECTION_MEMORY = "correction_memory"
     CATEGORY_RULE = "category_rule"
+    WEB_SOURCED = "web_sourced"
 
 
 @dataclass

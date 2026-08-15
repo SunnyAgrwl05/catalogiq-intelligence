@@ -21,6 +21,7 @@ from pipeline.enrichment import enrich_catalog
 from pipeline.export_formats import EXPORT_FORMATS, export_rows, list_formats
 from pipeline.icons import LOGO_MARK, icon
 from pipeline.run_history import load_history, recent_history, record_run
+from pipeline.web_evidence import DummyFetcher, WebEvidenceProvider
 from pipeline.reference_data import DATA_DIR, load_reference_data, reference_data_status
 from pipeline.schemas import Decision
 
@@ -281,10 +282,20 @@ if page == "Dashboard":
         "Leave empty to use built-in rules only. See data/custom_rules_sample.yaml for the format.",
         type=["yaml", "yml", "json"],
     )
+    enable_web_evidence = st.checkbox(
+        "Enable live manufacturer-site evidence sourcing",
+        value=False,
+        help="When enabled, the pipeline will attempt to gather additional evidence from the web. "
+             "External requests are rate-limited and subject to provider policies. "
+             "Disabled by default.",
+    )
 
     if run_clicked:
         rows = read_uploaded_or_sample(uploaded)
         corrections = load_corrections()
+        web_provider = WebEvidenceProvider() if enable_web_evidence else None
+        if web_provider:
+            web_provider.register(DummyFetcher())
         t0 = time.perf_counter()
         if rules_file is not None:
             import tempfile
@@ -300,7 +311,7 @@ if page == "Dashboard":
                 st.warning(f"Could not load custom rules file: {e}")
             finally:
                 os.unlink(tmp_path)
-        results = enrich_catalog(rows, ref, corrections)
+        results = enrich_catalog(rows, ref, corrections, web_provider=web_provider)
         elapsed = time.perf_counter() - t0
         st.session_state.results = results
         st.session_state.input_rows = rows
