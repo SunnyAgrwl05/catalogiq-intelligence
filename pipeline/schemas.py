@@ -9,7 +9,7 @@ data — it is pure structure. The pipeline modules populate it.
 
 from __future__ import annotations
 
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field as dataclass_field
 from enum import Enum
 from typing import Optional
 
@@ -58,7 +58,7 @@ class ValidationResult:
     uom: ValidationState = ValidationState.NOT_APPLICABLE
     rules: ValidationState = ValidationState.NOT_APPLICABLE
     source: ValidationState = ValidationState.NOT_APPLICABLE
-    notes: list[str] = field(default_factory=list)
+    notes: list[str] = dataclass_field(default_factory=list)
 
     def all_passed(self) -> bool:
         states = [self.lov, self.uom, self.rules, self.source]
@@ -80,8 +80,8 @@ class FieldResult:
     field: str
     value: Optional[str]
     confidence: float                      # 0..1
-    evidence: list[Evidence] = field(default_factory=list)
-    validation: ValidationResult = field(default_factory=ValidationResult)
+    evidence: list[Evidence] = dataclass_field(default_factory=list)
+    validation: ValidationResult = dataclass_field(default_factory=ValidationResult)
     decision: Decision = Decision.INVESTIGATE
     reason: str = ""
     is_conflict: bool = False
@@ -112,7 +112,7 @@ class ProductResult:
     """All field results for one product, plus derived product-level trust."""
     product_id: str
     raw_input: dict
-    fields: dict[str, FieldResult] = field(default_factory=dict)
+    fields: dict[str, FieldResult] = dataclass_field(default_factory=dict)
 
     def overall_trust(self) -> float:
         if not self.fields:
