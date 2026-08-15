@@ -21,7 +21,7 @@ from pipeline.enrichment import enrich_catalog
 from pipeline.export_formats import EXPORT_FORMATS, export_rows, list_formats
 from pipeline.icons import LOGO_MARK, icon
 from pipeline.run_history import load_history, recent_history, record_run
-from pipeline.web_evidence import DummyFetcher, WebEvidenceProvider
+from pipeline.web_evidence import HttpWebFetcher, WebEvidenceProvider
 from pipeline.reference_data import DATA_DIR, load_reference_data, reference_data_status
 from pipeline.schemas import Decision
 
@@ -295,7 +295,7 @@ if page == "Dashboard":
         corrections = load_corrections()
         web_provider = WebEvidenceProvider() if enable_web_evidence else None
         if web_provider:
-            web_provider.register(DummyFetcher())
+            web_provider.register(HttpWebFetcher())
         t0 = time.perf_counter()
         if rules_file is not None:
             import tempfile
