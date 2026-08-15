@@ -62,11 +62,17 @@ def load_reference_data(data_dir: str = DATA_DIR) -> ReferenceData:
 
     # --- Manufacturer / brand master ---
     for row in _read_csv(os.path.join(data_dir, "manufacturer_brand_master.csv")):
+        manufacturer = (row.get("manufacturer") or "").strip()
+        brand = (row.get("brand") or "").strip()
+        # A single malformed reference row should not discard the rest of the
+        # master file or crash the application at startup.
+        if not manufacturer or not brand:
+            continue
         aliases = [a.strip() for a in (row.get("aliases") or "").split(";") if a.strip()]
         prefixes = [p.strip() for p in (row.get("mpn_prefixes") or "").split(";") if p.strip()]
         rec = ManufacturerRecord(
-            manufacturer=row["manufacturer"].strip(),
-            brand=row["brand"].strip(),
+            manufacturer=manufacturer,
+            brand=brand,
             aliases=aliases,
             mpn_prefixes=prefixes,
             category_focus=(row.get("category_focus") or "").strip(),
@@ -82,15 +88,22 @@ def load_reference_data(data_dir: str = DATA_DIR) -> ReferenceData:
 
     # --- LOV master ---
     for row in _read_csv(os.path.join(data_dir, "lov_master.csv")):
-        key = (row["category"].strip(), row["attribute"].strip())
-        ref.lov.setdefault(key, set()).add(row["allowed_value"].strip())
+        category = (row.get("category") or "").strip()
+        attribute = (row.get("attribute") or "").strip()
+        allowed_value = (row.get("allowed_value") or "").strip()
+        if not category or not attribute or not allowed_value:
+            continue
+        key = (category, attribute)
+        ref.lov.setdefault(key, set()).add(allowed_value)
 
     # --- UOM standards ---
     for row in _read_csv(os.path.join(data_dir, "uom_standards.csv")):
-        ref.uom_map[_norm(row["raw_form"])] = (
-            row["normalized_uom"].strip(),
-            row["format_template"].strip(),
-        )
+        raw_form = _norm(row.get("raw_form"))
+        normalized_uom = (row.get("normalized_uom") or "").strip()
+        format_template = (row.get("format_template") or "").strip()
+        if not raw_form or not normalized_uom or not format_template:
+            continue
+        ref.uom_map[raw_form] = (normalized_uom, format_template)
 
     # --- Decimal -> fraction ---
     for row in _read_csv(os.path.join(data_dir, "decimal_fraction.csv")):
