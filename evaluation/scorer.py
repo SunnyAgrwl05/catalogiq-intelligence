@@ -27,8 +27,26 @@ class FieldAccuracy:
     unknown_correctly_flagged: int = 0     # ground truth is UNKNOWN and system also said unknown/review
     total: int = 0
 
+    # confusion matrix counts for the "unknown" positive class
+    tp: int = 0  # true positive:  ground truth UNKNOWN  → predicted UNKNOWN
+    fp: int = 0  # false positive: ground truth KNOWN    → predicted UNKNOWN
+    fn: int = 0  # false negative: ground truth UNKNOWN  → predicted KNOWN
+    tn: int = 0  # true negative:  ground truth KNOWN    → predicted KNOWN
+
     def accuracy(self) -> float:
         return (self.correct / self.total) if self.total else 0.0
+
+    def precision(self) -> float:
+        denom = self.tp + self.fp
+        return (self.tp / denom) if denom else 0.0
+
+    def recall(self) -> float:
+        denom = self.tp + self.fn
+        return (self.tp / denom) if denom else 0.0
+
+    def f1(self) -> float:
+        p, r = self.precision(), self.recall()
+        return (2 * p * r / (p + r)) if (p + r) else 0.0
 
 
 @dataclass
@@ -99,12 +117,46 @@ def evaluate(results: list[ProductResult], ground_truth: list[dict]) -> Evaluati
             if expected_is_unknown and predicted_is_unknown:
                 acc.unknown_correctly_flagged += 1
                 acc.correct += 1
+                acc.tp += 1
                 continue
 
+            if expected_is_unknown and not predicted_is_unknown:
+                # ground truth UNKNOWN but system predicted a value
+                acc.fn += 1
+                acc.incorrect += 1
+                report.error_cases.append(ErrorCase(
+                    product_id=product.product_id,
+                    field=pipeline_field,
+                    predicted=predicted,
+                    expected=expected,
+                    confidence=fr.confidence,
+                    was_conflict=fr.is_conflict,
+                    reason=fr.reason,
+                ))
+                continue
+
+            if not expected_is_unknown and predicted_is_unknown:
+                # ground truth KNOWN but system predicted unknown
+                acc.fp += 1
+                acc.incorrect += 1
+                report.error_cases.append(ErrorCase(
+                    product_id=product.product_id,
+                    field=pipeline_field,
+                    predicted=predicted,
+                    expected=expected,
+                    confidence=fr.confidence,
+                    was_conflict=fr.is_conflict,
+                    reason=fr.reason,
+                ))
+                continue
+
+            # both are known values
             if _norm(predicted) == _norm(expected):
                 acc.correct += 1
+                acc.tn += 1
             else:
                 acc.incorrect += 1
+                acc.tn += 1
                 report.error_cases.append(ErrorCase(
                     product_id=product.product_id,
                     field=pipeline_field,
