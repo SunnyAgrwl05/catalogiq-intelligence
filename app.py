@@ -16,6 +16,7 @@ import streamlit as st
 from evaluation.scorer import error_category_summary, evaluate
 from pipeline.correction_memory import load_corrections, record_correction
 from pipeline.enrichment import enrich_catalog
+from pipeline.export_formats import EXPORT_FORMATS, export_rows, list_formats
 from pipeline.icons import LOGO_MARK, icon
 from pipeline.reference_data import DATA_DIR, load_reference_data, reference_data_status
 from pipeline.schemas import Decision
@@ -581,18 +582,17 @@ elif page == "Raw vs Enriched / Export":
 
         st.markdown("---")
         st.subheader("Export")
-        export_rows = []
-        for r in results:
-            row = {"product_id": r.product_id, "overall_trust": r.overall_trust(), "overall_decision": r.overall_decision().value}
-            for field_name, fr in r.fields.items():
-                row[f"{field_name}_value"] = fr.value
-                row[f"{field_name}_confidence"] = fr.confidence
-                row[f"{field_name}_decision"] = fr.decision.value
-                row[f"{field_name}_evidence_summary"] = "; ".join(e.signal for e in fr.evidence)
-                row[f"{field_name}_validation"] = "; ".join(fr.validation.notes) if fr.validation.notes else "ok"
-            export_rows.append(row)
-        export_df = pd.DataFrame(export_rows)
+        format_options = list_formats()
+        format_labels = {EXPORT_FORMATS[k].name: k for k in format_options}
+        selected_label = st.selectbox("Export format", list(format_labels.keys()), key="export_format")
+        selected_format = format_labels[selected_label]
+        fmt = EXPORT_FORMATS[selected_format]
+
+        st.caption(fmt.description)
+        data_rows = export_rows(results, selected_format)
+        export_df = pd.DataFrame(data_rows)
+        file_name = f"catalogiq_{selected_format}_export.csv"
         csv_bytes = export_df.to_csv(index=False).encode("utf-8")
-        st.download_button("Download enriched catalog (CSV)", data=csv_bytes, file_name="catalogiq_enriched_output.csv", mime="text/csv")
+        st.download_button(f"Download {fmt.name} CSV", data=csv_bytes, file_name=file_name, mime="text/csv")
 
         
