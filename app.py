@@ -15,6 +15,7 @@ import pandas as pd
 import streamlit as st
 
 from evaluation.scorer import error_category_summary, evaluate, manufacturer_confusion_pairs
+from pipeline.audit_log import filter_audit_log, load_audit_log, record_audit
 from pipeline.correction_memory import load_corrections, record_correction
 from pipeline.custom_rules import load_rules_file, merge_custom_rules_into_ref
 from pipeline.enrichment import enrich_catalog
@@ -483,6 +484,10 @@ elif page == "Human Review":
                                 mpn=input_row.get("mpn"), manufacturer_input=input_row.get("manufacturer"),
                                 predicted_value=fr.value, corrected_value=corrected_value.strip(), reason=reason,
                             )
+                            record_audit(
+                                product_id=r.product_id, field=field_name,
+                                action="Correct", old_value=fr.value, new_value=corrected_value.strip(),
+                            )
                             st.success("Correction saved to correction memory. Re-run the engine to see it applied.")
                         else:
                             st.warning("Enter a corrected value before saving.")
@@ -494,7 +499,50 @@ elif page == "Human Review":
                             mpn=input_row.get("mpn"), manufacturer_input=input_row.get("manufacturer"),
                             predicted_value=fr.value, corrected_value="UNKNOWN", reason="Marked unknown by reviewer",
                         )
+                        record_audit(
+                            product_id=r.product_id, field=field_name,
+                            action="Mark Unknown", old_value=fr.value, new_value="UNKNOWN",
+                        )
                         st.success("Marked unknown and saved to correction memory.")
+                elif action == "Accept":
+                    if st.button("Confirm accept", key=f"acc_{action_key}"):
+                        record_audit(
+                            product_id=r.product_id, field=field_name,
+                            action="Accept", old_value=fr.value, new_value=fr.value,
+                        )
+                        st.success("Acceptance recorded in audit log.")
+
+        # ---- Audit Log ----
+        st.markdown("---")
+        with st.expander("Audit Log", expanded=False):
+            audit_records = load_audit_log()
+            if not audit_records:
+                st.info("No audit records yet. Take an action in the review queue above to start building the audit trail.")
+            else:
+                col_f1, col_f2 = st.columns(2)
+                all_product_ids = sorted({r.product_id for r in audit_records})
+                all_fields = sorted({r.field for r in audit_records})
+                with col_f1:
+                    filter_pid = st.selectbox("Filter by product_id", ["All"] + all_product_ids, key="audit_filter_pid")
+                with col_f2:
+                    filter_field = st.selectbox("Filter by field", ["All"] + all_fields, key="audit_filter_field")
+                filtered = filter_audit_log(
+                    audit_records,
+                    product_id=None if filter_pid == "All" else filter_pid,
+                    field=None if filter_field == "All" else filter_field,
+                )
+                if filtered:
+                    audit_df = pd.DataFrame([{
+                        "Timestamp": r.timestamp,
+                        "Product": r.product_id,
+                        "Field": r.field,
+                        "Action": r.action,
+                        "Old Value": r.old_value,
+                        "New Value": r.new_value,
+                    } for r in reversed(filtered)])
+                    st.dataframe(audit_df, use_container_width=True, hide_index=True)
+                else:
+                    st.info("No records match the selected filters.")
 
 # ============================================================ BENCHMARK PAGE
 elif page == "Benchmark & Quality":
