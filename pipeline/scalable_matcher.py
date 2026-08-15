@@ -11,7 +11,9 @@ app still works without the optional compiled dependency.
 
 from __future__ import annotations
 
-from typing import Optional
+from typing import Mapping, Optional, TypeVar
+
+T = TypeVar("T")
 
 try:
     from rapidfuzz import fuzz as _rfuzz
@@ -24,23 +26,23 @@ try:
 except ImportError:
     from difflib import SequenceMatcher
 
-    def _similarity(a: str, b: str) -> float:  # type: ignore[misc]
+    def _similarity(a: str, b: str) -> float:
         return SequenceMatcher(None, a.lower(), b.lower()).ratio()
 
 
 def find_best_match(
     query: str,
-    candidates: dict[str, object],
+    candidates: Mapping[str, T],
     threshold: float = 0.82,
-) -> tuple[Optional[object], float]:
+) -> tuple[Optional[T], float]:
     """Return the best-matching candidate and its score.
 
     Parameters
     ----------
     query : str
         The normalized (lower-cased, stripped) string to match.
-    candidates : dict[str, object]
-        Mapping of normalized name → record object.
+    candidates : Mapping[str, T]
+        Mapping of normalized name to record object.
     threshold : float
         Minimum score to accept a match.
 
@@ -64,9 +66,9 @@ def find_best_match(
 
 def batch_resolve(
     queries: list[str],
-    candidates: dict[str, object],
+    candidates: Mapping[str, T],
     threshold: float = 0.82,
-) -> list[tuple[Optional[object], float]]:
+) -> list[tuple[Optional[T], float]]:
     """Resolve multiple queries against the same candidate set.
 
     Uses rapidfuzz's ``cdist`` for vectorized distance computation when
@@ -81,6 +83,7 @@ def batch_resolve(
     candidate_names = list(candidates.keys())
     candidate_records = list(candidates.values())
 
+    results: list[tuple[Optional[T], float]] = []
     try:
         from rapidfuzz.process import cdist
 
@@ -91,7 +94,6 @@ def batch_resolve(
             scorer=_rfuzz.token_set_ratio,
         )
 
-        results: list[tuple[Optional[object], float]] = []
         for row in score_matrix:
             best_idx = int(row.argmax())
             best_score = float(row[best_idx]) / 100.0
@@ -102,4 +104,6 @@ def batch_resolve(
         return results
 
     except ImportError:
-        return [find_best_match(q, candidates, threshold) for q in queries]
+        for q in queries:
+            results.append(find_best_match(q, candidates, threshold))
+        return results
