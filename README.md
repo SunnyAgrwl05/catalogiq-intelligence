@@ -240,6 +240,51 @@ streamlit run app.py
 
 ---
 
+## API
+
+CatalogIQ also provides a REST API via FastAPI alongside the Streamlit UI.
+
+### Start the API server
+
+```bash
+uvicorn api:app --reload
+```
+
+OpenAPI interactive docs at `http://localhost:8000/docs`.
+
+### `GET /health`
+
+```bash
+curl http://localhost:8000/health
+```
+
+### `POST /enrich` (JSON)
+
+```bash
+curl -X POST http://localhost:8000/enrich \
+  -H "Content-Type: application/json" \
+  -d '{
+    "products": [
+      {
+        "product_id": "P001",
+        "manufacturer": "Moen",
+        "mpn": "MN-7000",
+        "description": "Single handle kitchen faucet, chrome finish",
+        "category": "Faucets"
+      }
+    ]
+  }'
+```
+
+### `POST /enrich/csv` (CSV upload)
+
+```bash
+curl -X POST http://localhost:8000/enrich/csv \
+  -F "file=@catalog.csv"
+```
+
+---
+
 ## Demo Flow
 
 1. **Dashboard** → click `RUN INTELLIGENCE ENGINE`
