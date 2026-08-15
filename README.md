@@ -1,4 +1,4 @@
-# CatalogIQ
+🧠 CatalogIQ Intelligence
 
 ### Evidence-Driven Product Intelligence for Industrial Commerce
 
