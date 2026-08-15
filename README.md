@@ -1,10 +1,11 @@
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE) [![Live Demo](https://img.shields.io/badge/Live-Demo-brightgreen)](#) [![Source Code](https://img.shields.io/badge/Source-Code-blue)](https://github.com/SunnyAgrwl05/catalogiq-intelligence) [![PRs Welcome](https://img.shields.io/badge/PRs-welcome-brightgreen.svg)](CONTRIBUTING.md)
+
+
 # 🧠 CatalogIQ Intelligence
 
 ### Evidence-Driven Product Intelligence for Industrial Commerce
 
 Built by **Team UniCode** · UniHack Hackathon 2026
-
-[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE) [![Live Demo](https://img.shields.io/badge/Live-Demo-brightgreen)](#) [![Source Code](https://img.shields.io/badge/Source-Code-blue)](https://github.com/SunnyAgrwl05/catalogiq-intelligence) [![PRs Welcome](https://img.shields.io/badge/PRs-welcome-brightgreen.svg)](CONTRIBUTING.md)
 
 CatalogIQ turns incomplete, messy industrial product data into structured, validated, commerce-ready product intelligence. Every important output is backed by **visible evidence**, a **deterministic confidence score**, and a clear decision: `AUTO_APPROVE`, `REVIEW`, or `INVESTIGATE`.
 
