@@ -142,6 +142,26 @@ A field result contains the selected value, confidence, supporting evidence, val
 
 The app exposes this information in **Product Explainability** so reviewers can understand why a value was selected.
 
+### How confidence is calculated
+
+Confidence is calculated from three main factors: evidence support, validation results, and contradiction severity.
+
+- **Evidence support:** The system starts with the strength of the evidence supporting the selected value. If the total support is greater than 1, diminishing returns are applied so that additional agreeing evidence increases confidence by progressively smaller amounts.
+- **Validation results:** The system checks four validation states: LOV, UOM, rules, and source. Each failed validation check multiplies the confidence by 0.5, reducing the confidence for each failed check.
+- **Contradiction severity:** Conflicting evidence reduces confidence based on its severity. The contradiction multiplier is calculated as `1 - (0.5 × conflict severity)`. At maximum conflict severity, this reduces confidence by half.
+
+The final confidence is calculated by combining these factors:
+
+`confidence = base evidence confidence × validation multiplier × contradiction multiplier`
+
+The result is limited to a value between 0 and 1 and rounded to four decimal places.
+
+The final decision is then determined from the confidence score. A conflict always results in `INVESTIGATE`. Otherwise:
+
+- Confidence of `0.90` or higher → `AUTO_APPROVED`
+- Confidence of `0.65` to below `0.90` → `REVIEW_REQUIRED`
+- Confidence below `0.65` → `INVESTIGATE`
+
 ---
 
 ## Human Review & Correction Memory
