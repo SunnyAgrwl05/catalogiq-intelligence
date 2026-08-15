@@ -262,6 +262,44 @@ The tests cover normalization, placeholders, measurement extraction, entity reso
 
 ---
 
+## Custom Validation Rules
+
+You can extend the validation pipeline without modifying Python source code by uploading a YAML or JSON rules file through the Dashboard.
+
+See [`data/custom_rules_sample.yaml`](data/custom_rules_sample.yaml) for a complete example.
+
+### Supported Sections
+
+```yaml
+# Additional allowed-value lists
+lov:
+  Faucets:
+    Finish: ["Polished Nickel", "Matte Black"]
+  Valves:
+    Material: ["Brass", "Stainless Steel", "PVC"]
+
+# Additional unit-of-measure entries
+uom:
+  m:
+    normalized: "m"
+    template: "{value} m"
+  cm:
+    normalized: "cm"
+    template: "{value} cm"
+
+# Category-specific anomaly thresholds
+anomaly_rules:
+  - category: "Valves"
+    attribute: "weight"
+    unit: "kg"
+    max_value: 200
+    message: "Valve weight over 200 kg is unusual for this category"
+```
+
+Custom rules are merged with the built-in reference data at runtime. When no rules file is provided, existing behavior is preserved.
+
+---
+
 ## Limitations
 
 - Bundled reference and ground-truth data are synthetic/sample data
