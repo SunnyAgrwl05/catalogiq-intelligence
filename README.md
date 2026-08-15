@@ -1,4 +1,6 @@
-# CatalogIQ
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
+
+# 🧠 CatalogIQ Intelligence
 
 ### Evidence-Driven Product Intelligence for Industrial Commerce
 
@@ -6,6 +8,7 @@ Built by **Team UniCode** · UniHack Hackathon 2026
 
 [![Live Demo](https://img.shields.io/badge/Live-Demo-brightgreen)](#)
 [![Source Code](https://img.shields.io/badge/Source-Code-blue)](https://github.com/SunnyAgrwl05/catalogiq-intelligence)
+[![PRs Welcome](https://img.shields.io/badge/PRs-welcome-brightgreen.svg)](CONTRIBUTING.md)
 
 CatalogIQ turns incomplete, messy industrial product data into structured, validated, commerce-ready product intelligence. Every important output is backed by **visible evidence**, a **deterministic confidence score**, and a clear decision: `AUTO_APPROVE`, `REVIEW`, or `INVESTIGATE`.
 
@@ -258,6 +261,24 @@ The tests cover normalization, placeholders, measurement extraction, entity reso
 
 ---
 
+## Contributing
+
+Contributions are welcome. See [CONTRIBUTING.md](CONTRIBUTING.md) for setup instructions, the PR checklist, and how to report bugs or propose features. Please also review the [Code of Conduct](CODE_OF_CONDUCT.md) before participating.
+
+Good first areas to contribute:
+
+- Additional validation rules (`pipeline/validation.py`)
+- Broader test coverage under `tests/`
+- A production-grade fuzzy matcher to replace `difflib` for large reference masters
+
+---
+
+## License
+
+This project is licensed under the [MIT License](LICENSE) — free to use, modify, and distribute, including commercially, with attribution.
+
+---
+
 <div align="center">
 
 **CatalogIQ**
@@ -265,4 +286,3 @@ The tests cover normalization, placeholders, measurement extraction, entity reso
 Built with ❤️ by **Sunny Kumar** & **Team UniCode** · UniHack Hackathon 2026
 
 </div>
-
