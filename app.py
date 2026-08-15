@@ -8,15 +8,19 @@ from __future__ import annotations
 
 import csv
 import io
+import os
 import time
 
 import pandas as pd
 import streamlit as st
 
-from evaluation.scorer import error_category_summary, evaluate
+from evaluation.scorer import error_category_summary, evaluate, manufacturer_confusion_pairs
 from pipeline.correction_memory import load_corrections, record_correction
+from pipeline.custom_rules import load_rules_file, merge_custom_rules_into_ref
 from pipeline.enrichment import enrich_catalog
+from pipeline.export_formats import EXPORT_FORMATS, export_rows, list_formats
 from pipeline.icons import LOGO_MARK, icon
+from pipeline.run_history import load_history, recent_history, record_run
 from pipeline.reference_data import DATA_DIR, load_reference_data, reference_data_status
 from pipeline.schemas import Decision
 
@@ -192,7 +196,8 @@ def read_uploaded_or_sample(uploaded_file) -> list[dict]:
 
 
 def load_ground_truth() -> list[dict]:
-    with open(f"{DATA_DIR}/sample_ground_truth.csv", newline="", encoding="utf-8-sig") as f:
+    path = os.environ.get("CATALOGIQ_GROUND_TRUTH_PATH", f"{DATA_DIR}/sample_ground_truth.csv")
+    with open(path, newline="", encoding="utf-8-sig") as f:
         return list(csv.DictReader(f))
 
 
@@ -224,7 +229,8 @@ with st.sidebar:
         "Navigate",
         [
             "Dashboard", "Product Explainability", "Contradictions",
-            "Human Review", "Benchmark & Quality", "Scale Test", "Raw vs Enriched / Export",
+            "Human Review", "Benchmark & Quality", "Health Trend",
+            "Scale Test", "Raw vs Enriched / Export",
         ],
         label_visibility="collapsed",
     )
@@ -270,16 +276,46 @@ if page == "Dashboard":
         st.write("")
         run_clicked = st.button("RUN INTELLIGENCE ENGINE", type="primary", use_container_width=True)
 
+    rules_file = st.file_uploader(
+        "Optional: upload custom validation rules (YAML or JSON). "
+        "Leave empty to use built-in rules only. See data/custom_rules_sample.yaml for the format.",
+        type=["yaml", "yml", "json"],
+    )
+
     if run_clicked:
         rows = read_uploaded_or_sample(uploaded)
         corrections = load_corrections()
         t0 = time.perf_counter()
+        if rules_file is not None:
+            import tempfile
+            suffix = os.path.splitext(rules_file.name)[1] or ".yaml"
+            with tempfile.NamedTemporaryFile(delete=False, suffix=suffix, mode="w", encoding="utf-8") as tmp:
+                tmp.write(rules_file.getvalue().decode("utf-8"))
+                tmp_path = tmp.name
+            try:
+                custom = load_rules_file(tmp_path)
+                merge_custom_rules_into_ref(ref, custom)
+                st.toast(f"Loaded custom rules from {rules_file.name}")
+            except Exception as e:
+                st.warning(f"Could not load custom rules file: {e}")
+            finally:
+                os.unlink(tmp_path)
         results = enrich_catalog(rows, ref, corrections)
         elapsed = time.perf_counter() - t0
         st.session_state.results = results
         st.session_state.input_rows = rows
         st.session_state.last_run_seconds = elapsed
-        st.success(f"Processed {len(results)} products in {elapsed:.2f}s.")
+        n = len(results)
+        auto_count = sum(1 for r in results if r.overall_decision() == Decision.AUTO_APPROVED)
+        conflict_count = sum(r.conflict_count() for r in results)
+        avg_trust = sum(r.overall_trust() for r in results) / n if n else 0
+        record_run(
+            n_records=n,
+            overall_field_accuracy=avg_trust,
+            auto_approved_pct=auto_count / n if n else 0,
+            conflict_count=conflict_count,
+        )
+        st.success(f"Processed {n} products in {elapsed:.2f}s.")
 
     results = st.session_state.results
     if results:
@@ -509,6 +545,15 @@ elif page == "Benchmark & Quality":
         else:
             st.success("No field errors on this sample benchmark.")
 
+        confusion = manufacturer_confusion_pairs(report)
+        if confusion:
+            st.markdown("**Manufacturer confusion matrix**")
+            st.caption("Most frequent (expected → predicted) manufacturer mismatches.")
+            conf_df = pd.DataFrame([{
+                "Expected": exp, "Predicted": pred, "Count": count,
+            } for exp, pred, count in confusion])
+            st.dataframe(conf_df, use_container_width=True, hide_index=True)
+
         st.markdown("**Error case detail**")
         if report.error_cases:
             err_df = pd.DataFrame([{
@@ -521,6 +566,46 @@ elif page == "Benchmark & Quality":
             st.caption("No mismatches to show.")
     else:
         st.info("Click 'Run benchmark now' to compute live metrics against the sample ground truth.")
+
+# ============================================================ HEALTH TREND
+elif page == "Health Trend":
+    st.subheader("Catalog Health Trend")
+    history = load_history()
+    if not history:
+        st.info("No run history yet. Run the intelligence engine on the Dashboard to start tracking catalog health over time.")
+    else:
+        st.caption(f"Showing the most recent {len(history)} run(s).")
+        rows_data = []
+        for r in history:
+            rows_data.append({
+                "Timestamp": r.timestamp[:19].replace("T", " "),
+                "Records": r.n_records,
+                "Field Accuracy": f"{r.overall_field_accuracy * 100:.1f}%",
+                "Auto-Approved %": f"{r.auto_approved_pct * 100:.1f}%",
+                "Conflicts": r.conflict_count,
+            })
+        st.dataframe(pd.DataFrame(rows_data), use_container_width=True, hide_index=True)
+
+        st.write("")
+        st.markdown("**Trend over time**")
+        chart_df = pd.DataFrame({
+            "Run": list(range(1, len(history) + 1)),
+            "Field Accuracy (%)": [r.overall_field_accuracy * 100 for r in history],
+            "Auto-Approved (%)": [r.auto_approved_pct * 100 for r in history],
+            "Conflicts": [r.conflict_count for r in history],
+        }).set_index("Run")
+        st.line_chart(chart_df)
+
+        if len(history) >= 2:
+            latest = history[-1]
+            previous = history[-2]
+            delta_acc = latest.overall_field_accuracy - previous.overall_field_accuracy
+            delta_auto = latest.auto_approved_pct - previous.auto_approved_pct
+            delta_conf = latest.conflict_count - previous.conflict_count
+            c1, c2, c3 = st.columns(3)
+            c1.metric("Field Accuracy", f"{latest.overall_field_accuracy * 100:.1f}%", f"{delta_acc * 100:+.1f}%")
+            c2.metric("Auto-Approved %", f"{latest.auto_approved_pct * 100:.1f}%", f"{delta_auto * 100:+.1f}%")
+            c3.metric("Conflicts", latest.conflict_count, f"{delta_conf:+d}")
 
 # =================================================================== SCALE TEST
 elif page == "Scale Test":
@@ -581,18 +666,17 @@ elif page == "Raw vs Enriched / Export":
 
         st.markdown("---")
         st.subheader("Export")
-        export_rows = []
-        for r in results:
-            row = {"product_id": r.product_id, "overall_trust": r.overall_trust(), "overall_decision": r.overall_decision().value}
-            for field_name, fr in r.fields.items():
-                row[f"{field_name}_value"] = fr.value
-                row[f"{field_name}_confidence"] = fr.confidence
-                row[f"{field_name}_decision"] = fr.decision.value
-                row[f"{field_name}_evidence_summary"] = "; ".join(e.signal for e in fr.evidence)
-                row[f"{field_name}_validation"] = "; ".join(fr.validation.notes) if fr.validation.notes else "ok"
-            export_rows.append(row)
-        export_df = pd.DataFrame(export_rows)
+        format_options = list_formats()
+        format_labels = {EXPORT_FORMATS[k].name: k for k in format_options}
+        selected_label = st.selectbox("Export format", list(format_labels.keys()), key="export_format")
+        selected_format = format_labels[selected_label]
+        fmt = EXPORT_FORMATS[selected_format]
+
+        st.caption(fmt.description)
+        data_rows = export_rows(results, selected_format)
+        export_df = pd.DataFrame(data_rows)
+        file_name = f"catalogiq_{selected_format}_export.csv"
         csv_bytes = export_df.to_csv(index=False).encode("utf-8")
-        st.download_button("Download enriched catalog (CSV)", data=csv_bytes, file_name="catalogiq_enriched_output.csv", mime="text/csv")
+        st.download_button(f"Download {fmt.name} CSV", data=csv_bytes, file_name=file_name, mime="text/csv")
 
         

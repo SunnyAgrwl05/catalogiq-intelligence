@@ -172,6 +172,109 @@ class TestScorer(unittest.TestCase):
         fa = FieldAccuracy(field="category")
         self.assertEqual(fa.accuracy(), 0.0)
 
+    def test_precision_recall_f1_all_unknown(self):
+        product = ProductResult(
+            product_id="P200",
+            raw_input={},
+            fields={
+                "manufacturer": FieldResult(
+                    field="manufacturer",
+                    value=None,
+                    confidence=0.0,
+                    decision=Decision.INVESTIGATE,
+                ),
+            },
+        )
+        ground_truth = [
+            {"product_id": "P200", "manufacturer_expected": "UNKNOWN"},
+        ]
+        report = evaluate([product], ground_truth)
+        acc = report.field_accuracies["manufacturer"]
+        self.assertEqual(acc.tp, 1)
+        self.assertEqual(acc.fp, 0)
+        self.assertEqual(acc.fn, 0)
+        self.assertEqual(acc.precision(), 1.0)
+        self.assertEqual(acc.recall(), 1.0)
+        self.assertEqual(acc.f1(), 1.0)
+
+    def test_precision_recall_f1_all_known(self):
+        product = ProductResult(
+            product_id="P201",
+            raw_input={},
+            fields={
+                "manufacturer": FieldResult(
+                    field="manufacturer",
+                    value="Delta",
+                    confidence=0.9,
+                    decision=Decision.AUTO_APPROVED,
+                ),
+            },
+        )
+        ground_truth = [
+            {"product_id": "P201", "manufacturer_expected": "delta"},
+        ]
+        report = evaluate([product], ground_truth)
+        acc = report.field_accuracies["manufacturer"]
+        self.assertEqual(acc.tp, 0)
+        self.assertEqual(acc.fp, 0)
+        self.assertEqual(acc.fn, 0)
+        self.assertEqual(acc.tn, 1)
+        # precision/recall/F1 are 0 when no unknown predictions exist
+        self.assertEqual(acc.precision(), 0.0)
+        self.assertEqual(acc.recall(), 0.0)
+        self.assertEqual(acc.f1(), 0.0)
+
+    def test_precision_recall_f1_mixed(self):
+        products = [
+            ProductResult(
+                product_id="P210",
+                raw_input={},
+                fields={"manufacturer": FieldResult(field="manufacturer", value=None, confidence=0.0, decision=Decision.INVESTIGATE)},
+            ),
+            ProductResult(
+                product_id="P211",
+                raw_input={},
+                fields={"manufacturer": FieldResult(field="manufacturer", value="Delta", confidence=0.9, decision=Decision.AUTO_APPROVED)},
+            ),
+            ProductResult(
+                product_id="P212",
+                raw_input={},
+                fields={"manufacturer": FieldResult(field="manufacturer", value=None, confidence=0.0, decision=Decision.INVESTIGATE)},
+            ),
+        ]
+        ground_truth = [
+            {"product_id": "P210", "manufacturer_expected": "UNKNOWN"},
+            {"product_id": "P211", "manufacturer_expected": "delta"},
+            {"product_id": "P212", "manufacturer_expected": "Moen"},
+        ]
+        report = evaluate(products, ground_truth)
+        acc = report.field_accuracies["manufacturer"]
+        # P210: true positive (UNKNOWN → unknown)
+        # P211: true negative  (known → known correct)
+        # P212: false positive (KNOWN → predicted unknown)
+        self.assertEqual(acc.tp, 1)
+        self.assertEqual(acc.fp, 1)
+        self.assertEqual(acc.fn, 0)
+        self.assertEqual(acc.tn, 1)
+        self.assertAlmostEqual(acc.precision(), 0.5)
+        self.assertAlmostEqual(acc.recall(), 1.0)
+        self.assertAlmostEqual(acc.f1(), 2/3)
+
+    def test_field_accuracy_zero_total_metrics(self):
+        fa = FieldAccuracy(field="category")
+        self.assertEqual(fa.accuracy(), 0.0)
+        self.assertEqual(fa.precision(), 0.0)
+        self.assertEqual(fa.recall(), 0.0)
+        self.assertEqual(fa.f1(), 0.0)
+
+    def test_backward_compatibility(self):
+        """Existing fields and methods still work."""
+        fa = FieldAccuracy(field="brand", correct=8, incorrect=2, total=10)
+        self.assertEqual(fa.accuracy(), 0.8)
+        self.assertEqual(fa.field, "brand")
+        self.assertEqual(fa.correct, 8)
+        self.assertEqual(fa.incorrect, 2)
+
 
 if __name__ == "__main__":
     unittest.main()

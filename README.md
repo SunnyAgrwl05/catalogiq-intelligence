@@ -1,4 +1,4 @@
-[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE) [![Live Demo](https://img.shields.io/badge/Live-Demo-brightgreen)](#) [![Source Code](https://img.shields.io/badge/Source-Code-blue)](https://github.com/SunnyAgrwl05/catalogiq-intelligence) [![PRs Welcome](https://img.shields.io/badge/PRs-welcome-brightgreen.svg)](CONTRIBUTING.md)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE) [![Live Demo](https://img.shields.io/badge/Live-Demo-brightgreen)](#) [![Source Code](https://img.shields.io/badge/Source-Code-blue)](https://github.com/SunnyAgrwl05/catalogiq-intelligence) [![PRs Welcome](https://img.shields.io/badge/PRs-welcome-brightgreen.svg)](CONTRIBUTING.md) [![Tests](https://github.com/SunnyAgrwl05/catalogiq-intelligence/actions/workflows/tests.yml/badge.svg)](https://github.com/SunnyAgrwl05/catalogiq-intelligence/actions/workflows/tests.yml)
 
 
 # 🧠 CatalogIQ Intelligence
@@ -225,6 +225,19 @@ streamlit run app.py
 
 Open the local URL printed by Streamlit, typically `http://localhost:8501`.
 
+### Environment Variables
+
+| Variable | Description | Default |
+|---|---|---|
+| `CATALOGIQ_GROUND_TRUTH_PATH` | Path to a custom ground-truth CSV for benchmarking | `data/sample_ground_truth.csv` |
+
+Example:
+
+```bash
+export CATALOGIQ_GROUND_TRUTH_PATH=/path/to/my/ground_truth.csv
+streamlit run app.py
+```
+
 ---
 
 ## API
@@ -291,6 +304,44 @@ python -m unittest discover -s tests -v
 ```
 
 The tests cover normalization, placeholders, measurement extraction, entity resolution, contradiction detection, confidence scoring, validation, and correction memory.
+
+---
+
+## Custom Validation Rules
+
+You can extend the validation pipeline without modifying Python source code by uploading a YAML or JSON rules file through the Dashboard.
+
+See [`data/custom_rules_sample.yaml`](data/custom_rules_sample.yaml) for a complete example.
+
+### Supported Sections
+
+```yaml
+# Additional allowed-value lists
+lov:
+  Faucets:
+    Finish: ["Polished Nickel", "Matte Black"]
+  Valves:
+    Material: ["Brass", "Stainless Steel", "PVC"]
+
+# Additional unit-of-measure entries
+uom:
+  m:
+    normalized: "m"
+    template: "{value} m"
+  cm:
+    normalized: "cm"
+    template: "{value} cm"
+
+# Category-specific anomaly thresholds
+anomaly_rules:
+  - category: "Valves"
+    attribute: "weight"
+    unit: "kg"
+    max_value: 200
+    message: "Valve weight over 200 kg is unusual for this category"
+```
+
+Custom rules are merged with the built-in reference data at runtime. When no rules file is provided, existing behavior is preserved.
 
 ---
 

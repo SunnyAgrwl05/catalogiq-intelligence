@@ -60,7 +60,7 @@ def validate_description_quality(description: str | None) -> tuple[ValidationSta
     return (ValidationState.FAILED if notes else ValidationState.PASSED), notes
 
 
-def check_contextual_anomaly(category: str | None, attribute: str | None, raw_value: str | None, raw_unit: str | None) -> str | None:
+def check_contextual_anomaly(category: str | None, attribute: str | None, raw_value: str | None, raw_unit: str | None, ref: ReferenceData | None = None) -> str | None:
     """Lightweight, rule-based anomaly guard. Only flags things a
     configured rule actually covers -- never claims physical impossibility
     beyond what's configured here."""
@@ -74,12 +74,24 @@ def check_contextual_anomaly(category: str | None, attribute: str | None, raw_va
     unit = raw_unit.strip().lower()
     attr = attribute.lower()
 
-    # Rule: a "small faucet" weighing >= 50 kg / >= 110 lb is contextually implausible.
+    # Built-in rule: faucet weight threshold
     if "faucet" in category.lower() and attr == "weight":
         if unit in ("kg",) and val >= 50:
             return f"CONTEXTUAL ANOMALY: {val} kg is an implausible weight for category '{category}' (rule: faucet weight < 50 kg)"
         if unit in ("lb", "lbs", "pound", "pounds") and val >= 110:
             return f"CONTEXTUAL ANOMALY: {val} lb is an implausible weight for category '{category}' (rule: faucet weight < 110 lb)"
+
+    # Custom anomaly rules from user-provided rules file
+    for ar in getattr(ref, "_custom_anomaly_rules", []) if ref is not None else []:
+        if (
+            ar.category.lower() in category.lower()
+            and ar.attribute.lower() == attr
+            and ar.unit.lower() == unit
+            and val >= ar.max_value
+        ):
+            msg = ar.message.format(max_value=ar.max_value, unit=ar.unit)
+            return f"CONTEXTUAL ANOMALY: {val} {ar.unit} -- {msg}"
+
     return None
 
 

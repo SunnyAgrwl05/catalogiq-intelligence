@@ -129,7 +129,7 @@ def enrich_measurement_fields(row: dict, category: str | None, ref: ReferenceDat
                 vr.notes.append(fmt_note)
             conf = 0.9 if fmt_state == ValidationState.PASSED else 0.5
 
-        anomaly = validation_mod.check_contextual_anomaly(category, "weight", raw_value, raw_unit) if "lb" in raw_unit.lower() or "kg" in raw_unit.lower() else None
+        anomaly = validation_mod.check_contextual_anomaly(category, "weight", raw_value, raw_unit, ref=ref) if "lb" in raw_unit.lower() or "kg" in raw_unit.lower() else None
         if anomaly:
             vr.rules = ValidationState.FAILED
             vr.notes.append(anomaly)
