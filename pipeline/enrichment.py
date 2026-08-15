@@ -19,12 +19,14 @@ from pipeline.evidence import gather_manufacturer_evidence
 from pipeline.preprocessing import normalize_product_row
 from pipeline.reference_data import ReferenceData
 from pipeline.schemas import Evidence, EvidenceType, FieldResult, ProductResult, ValidationState
+from pipeline.web_evidence import WebEvidenceProvider
 
 
 def enrich_manufacturer_field(
     row: dict,
     ref: ReferenceData,
     corrections: list[Correction] | None = None,
+    web_provider: WebEvidenceProvider | None = None,
 ) -> FieldResult:
     evidence = gather_manufacturer_evidence(row, ref)
 
@@ -40,11 +42,23 @@ def enrich_manufacturer_field(
         ))
         correction_applied = True
 
+    # Optional live web evidence sourcing
+    if web_provider and web_provider.enabled:
+        try:
+            web_results = web_provider.gather(
+                row.get("manufacturer"), row.get("mpn"), row.get("description"),
+            )
+            web_evidence = web_provider.to_evidence(web_results)
+            evidence.extend(web_evidence)
+        except Exception:
+            pass  # web evidence failures never break the pipeline
+
     fusion = fuse_evidence(evidence)
 
     validation = validation_mod.ValidationResult()
     if fusion.winning_value:
-        validation.source = ValidationState.NOT_APPLICABLE  # no live web sourcing in this build
+        has_web = any(e.type == EvidenceType.WEB_SOURCED for e in evidence)
+        validation.source = ValidationState.PASSED if has_web else ValidationState.NOT_APPLICABLE
 
     conf = confidence_mod.compute_field_confidence(fusion, validation)
     decision = confidence_mod.decide(conf, fusion.is_conflict)
@@ -145,11 +159,11 @@ def enrich_measurement_fields(row: dict, category: str | None, ref: ReferenceDat
     return results
 
 
-def enrich_product(raw_row: dict, ref: ReferenceData, corrections: list[Correction] | None = None) -> ProductResult:
+def enrich_product(raw_row: dict, ref: ReferenceData, corrections: list[Correction] | None = None, web_provider: WebEvidenceProvider | None = None) -> ProductResult:
     normalized = normalize_product_row(raw_row)
     product_id = normalized.get("product_id") or "UNKNOWN_ID"
 
-    manufacturer_field = enrich_manufacturer_field(normalized, ref, corrections)
+    manufacturer_field = enrich_manufacturer_field(normalized, ref, corrections, web_provider=web_provider)
     brand_field = enrich_brand_field(manufacturer_field, ref)
     category_field = enrich_category_field(normalized)
     measurement_fields = enrich_measurement_fields(normalized, category_field.value, ref)
@@ -164,5 +178,5 @@ def enrich_product(raw_row: dict, ref: ReferenceData, corrections: list[Correcti
     return result
 
 
-def enrich_catalog(rows: list[dict], ref: ReferenceData, corrections: list[Correction] | None = None) -> list[ProductResult]:
-    return [enrich_product(row, ref, corrections) for row in rows]
+def enrich_catalog(rows: list[dict], ref: ReferenceData, corrections: list[Correction] | None = None, web_provider: WebEvidenceProvider | None = None) -> list[ProductResult]:
+    return [enrich_product(row, ref, corrections, web_provider=web_provider) for row in rows]

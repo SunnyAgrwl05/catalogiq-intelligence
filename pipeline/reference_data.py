@@ -98,7 +98,7 @@ def load_reference_data(data_dir: str = DATA_DIR) -> ReferenceData:
 
     # --- UOM standards ---
     for row in _read_csv(os.path.join(data_dir, "uom_standards.csv")):
-        raw_form = _norm(row.get("raw_form"))
+        raw_form = _norm(row.get("raw_form") or "")
         normalized_uom = (row.get("normalized_uom") or "").strip()
         format_template = (row.get("format_template") or "").strip()
         if not raw_form or not normalized_uom or not format_template:
