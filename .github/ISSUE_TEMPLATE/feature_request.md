@@ -1,23 +1,25 @@
 ---
-name: Feature Request
-about: Suggest an idea or improvement for CatalogIQ
-title: "[Feature] "
+name: Feature request
+about: Suggest a new feature or improvement for CatalogIQ
+title: "[FEATURE] "
 labels: enhancement
 assignees: ''
 ---
 
 ## Problem
 
+What problem does this feature solve? What is difficult or painful today?
+
 A clear description of the problem or limitation you are experiencing.
 
-## Proposed Solution
+## Proposed solution
 
-Describe the solution you'd like to see implemented.
+A clear description of what you want to happen. Describe the solution you'd like to see implemented.
 
-## Alternatives Considered
+## Alternatives considered
 
-Any alternative solutions or workarounds you've considered.
+Other approaches you thought about, and why this one is better. Any alternative solutions or workarounds you've considered.
 
-## Additional Context
+## Additional context
 
-Add any other context, mockups, or examples about the feature request here.
+Links, mockups, examples, or references that provide more context.

@@ -1,7 +1,7 @@
 ---
-name: Bug Report
-about: Report a bug to help us improve CatalogIQ
-title: "[Bug] "
+name: Bug report
+about: Report a bug or unexpected behavior in CatalogIQ
+title: "[BUG] "
 labels: bug
 assignees: ''
 ---
@@ -10,31 +10,39 @@ assignees: ''
 
 A clear and concise description of the bug.
 
-## Steps to Reproduce
+## Steps to reproduce
 
-1. Go to '...'
-2. Click on '...'
-3. Scroll down to '...'
-4. See error
+1.
+2.
+3.
 
-## Expected Behavior
+## Expected behavior
 
 What you expected to happen.
 
-## Actual Behavior
+## Actual behavior
 
-What actually happened.
+What actually happened. Include the full error message or traceback.
 
 ## Environment
 
-- OS: [e.g. macOS, Windows, Linux]
-- Python version: [e.g. 3.12]
-- Browser (if UI-related): [e.g. Chrome, Firefox]
+- OS: (e.g. Ubuntu 22.04, Windows 11, macOS)
+- Python version: (`python --version`)
+- Browser (if relevant):
 
-## Logs / Screenshots
+## Logs / screenshots
 
-If applicable, add logs or screenshots to help explain the problem.
+<details>
+<summary>Click to expand full logs</summary>
 
-## Additional Context
+```
+paste logs here
+```
 
-Add any other context about the problem here.
+</details>
+
+Add screenshots here if they help explain the problem.
+
+## Additional context
+
+Anything else that might help us reproduce it (sample input rows, config, etc.).
