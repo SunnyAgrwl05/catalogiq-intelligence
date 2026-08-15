@@ -13,7 +13,7 @@ import time
 import pandas as pd
 import streamlit as st
 
-from evaluation.scorer import error_category_summary, evaluate
+from evaluation.scorer import error_category_summary, evaluate, manufacturer_confusion_pairs
 from pipeline.correction_memory import load_corrections, record_correction
 from pipeline.enrichment import enrich_catalog
 from pipeline.icons import LOGO_MARK, icon
@@ -509,6 +509,15 @@ elif page == "Benchmark & Quality":
                 st.write(f"- {field_name}: {count} error(s)")
         else:
             st.success("No field errors on this sample benchmark.")
+
+        confusion = manufacturer_confusion_pairs(report)
+        if confusion:
+            st.markdown("**Manufacturer confusion matrix**")
+            st.caption("Most frequent (expected → predicted) manufacturer mismatches.")
+            conf_df = pd.DataFrame([{
+                "Expected": exp, "Predicted": pred, "Count": count,
+            } for exp, pred, count in confusion])
+            st.dataframe(conf_df, use_container_width=True, hide_index=True)
 
         st.markdown("**Error case detail**")
         if report.error_cases:

@@ -182,3 +182,19 @@ def error_category_summary(report: EvaluationReport, top_n: int = 5) -> list[tup
         counts[e.field] = counts.get(e.field, 0) + 1
     ranked = sorted(counts.items(), key=lambda kv: kv[1], reverse=True)
     return ranked[:top_n]
+
+
+def manufacturer_confusion_pairs(report: EvaluationReport, top_n: int = 10) -> list[tuple[str, str, int]]:
+    """Return the most frequent (expected, predicted) manufacturer pairs.
+
+    Each entry is a tuple of (expected, predicted, count) sorted by
+    count descending.  Only manufacturer-field errors are included.
+    """
+    pairs: dict[tuple[str, str], int] = {}
+    for e in report.error_cases:
+        if e.field != "manufacturer":
+            continue
+        key = (_norm(e.expected), _norm(e.predicted))
+        pairs[key] = pairs.get(key, 0) + 1
+    ranked = sorted(pairs.items(), key=lambda kv: kv[1], reverse=True)
+    return [(exp, pred, count) for (exp, pred), count in ranked[:top_n]]
