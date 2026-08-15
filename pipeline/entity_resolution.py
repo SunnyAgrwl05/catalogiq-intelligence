@@ -1,17 +1,18 @@
 """
 Manufacturer / brand entity resolution and MPN-based candidate lookup.
 
-Uses only the Python standard library (difflib) for fuzzy matching, so the
-app has no hard dependency on a compiled fuzzy-matching library.
+Uses ``rapidfuzz`` for fast fuzzy matching when available, falling back
+to the stdlib ``difflib`` if the optional compiled dependency is not
+installed.
 """
 
 from __future__ import annotations
 
 import re
 from dataclasses import dataclass
-from difflib import SequenceMatcher
 
 from pipeline.reference_data import ManufacturerRecord, ReferenceData
+from pipeline.scalable_matcher import _similarity, find_best_match
 
 FUZZY_MATCH_THRESHOLD = 0.82
 
@@ -21,10 +22,6 @@ class MatchResult:
     record: ManufacturerRecord | None
     match_type: str    # "exact" | "alias" | "fuzzy" | "none"
     score: float        # 0..1
-
-
-def _similarity(a: str, b: str) -> float:
-    return SequenceMatcher(None, a.lower(), b.lower()).ratio()
 
 
 def resolve_manufacturer(name: str | None, ref: ReferenceData) -> MatchResult:
@@ -50,18 +47,11 @@ def resolve_manufacturer(name: str | None, ref: ReferenceData) -> MatchResult:
         return MatchResult(record=ref.manufacturer_index[stripped], match_type="alias", score=0.97)
 
     # fuzzy match against all known names
-    best_record = None
-    best_score = 0.0
-    for indexed_name, record in ref.manufacturer_index.items():
-        score = _similarity(key, indexed_name)
-        if score > best_score:
-            best_score = score
-            best_record = record
+    record, score = find_best_match(key, ref.manufacturer_index, FUZZY_MATCH_THRESHOLD)
+    if record is not None:
+        return MatchResult(record=record, match_type="fuzzy", score=score)
 
-    if best_record and best_score >= FUZZY_MATCH_THRESHOLD:
-        return MatchResult(record=best_record, match_type="fuzzy", score=best_score)
-
-    return MatchResult(record=None, match_type="none", score=best_score)
+    return MatchResult(record=None, match_type="none", score=score)
 
 
 def resolve_mpn(mpn: str | None, ref: ReferenceData) -> MatchResult:
