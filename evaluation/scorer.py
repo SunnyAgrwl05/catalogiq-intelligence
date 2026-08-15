@@ -61,6 +61,31 @@ class ErrorCase:
 
 
 @dataclass
+class ConfidenceBucket:
+    """A single bucket in the calibration report."""
+    lower: float
+    upper: float
+    count: int = 0
+    correct: int = 0
+
+    @property
+    def mid(self) -> float:
+        return (self.lower + self.upper) / 2
+
+    @property
+    def observed_accuracy(self) -> float:
+        return (self.correct / self.count) if self.count else 0.0
+
+
+@dataclass
+class CalibrationReport:
+    """Confidence calibration report grouping predictions into buckets."""
+    buckets: list[ConfidenceBucket] = field(default_factory=list)
+    total_predictions: int = 0
+    mean_absolute_error: float = 0.0
+
+
+@dataclass
 class EvaluationReport:
     n_records: int
     field_accuracies: dict[str, FieldAccuracy] = field(default_factory=dict)
@@ -71,6 +96,7 @@ class EvaluationReport:
     investigate: int = 0
     conflict_count: int = 0
     avg_confidence: float = 0.0
+    calibration: CalibrationReport | None = None
 
 
 def evaluate(results: list[ProductResult], ground_truth: list[dict]) -> EvaluationReport:
@@ -171,6 +197,7 @@ def evaluate(results: list[ProductResult], ground_truth: list[dict]) -> Evaluati
     total_fields = sum(a.total for a in report.field_accuracies.values())
     report.overall_field_accuracy = (total_correct / total_fields) if total_fields else 0.0
     report.avg_confidence = (sum(confidences) / len(confidences)) if confidences else 0.0
+    report.calibration = calibration_report(results, ground_truth)
 
     return report
 
@@ -198,3 +225,67 @@ def manufacturer_confusion_pairs(report: EvaluationReport, top_n: int = 10) -> l
         pairs[key] = pairs.get(key, 0) + 1
     ranked = sorted(pairs.items(), key=lambda kv: kv[1], reverse=True)
     return [(exp, pred, count) for (exp, pred), count in ranked[:top_n]]
+
+
+def calibration_report(results: list[ProductResult], ground_truth: list[dict], n_buckets: int = 10) -> CalibrationReport:
+    """Build a confidence calibration report.
+
+    Groups all field-level predictions into confidence buckets (0.0-0.1,
+    0.1-0.2, ..., 0.9-1.0) and computes the observed accuracy for each
+    bucket using the ground-truth dataset.
+
+    A well-calibrated model would have observed_accuracy approximately
+    equal to the bucket's midpoint confidence.
+    """
+    gt_by_id = {row["product_id"]: row for row in ground_truth}
+    field_map = {
+        "manufacturer": "manufacturer_expected",
+        "brand": "brand_expected",
+        "category": "category_expected",
+    }
+
+    bucket_size = 1.0 / n_buckets
+    buckets = [
+        ConfidenceBucket(lower=round(i * bucket_size, 4), upper=round((i + 1) * bucket_size, 4))
+        for i in range(n_buckets)
+    ]
+
+    total = 0
+    for product in results:
+        gt_row = gt_by_id.get(product.product_id)
+        if gt_row is None:
+            continue
+
+        for pipeline_field, gt_col in field_map.items():
+            fr = product.fields.get(pipeline_field)
+            if fr is None:
+                continue
+            expected = gt_row.get(gt_col, "")
+            predicted = fr.value
+            confidence = fr.confidence
+
+            total += 1
+            bucket_idx = min(int(confidence / bucket_size), n_buckets - 1)
+            bucket = buckets[bucket_idx]
+            bucket.count += 1
+
+            expected_is_unknown = _norm(expected) == "unknown"
+            predicted_is_unknown = predicted is None
+
+            if expected_is_unknown and predicted_is_unknown:
+                bucket.correct += 1
+            elif _norm(predicted) == _norm(expected):
+                bucket.correct += 1
+
+    # Mean absolute error between confidence and observed accuracy
+    active_buckets = [b for b in buckets if b.count > 0]
+    if active_buckets:
+        mae = sum(abs(b.mid - b.observed_accuracy) for b in active_buckets) / len(active_buckets)
+    else:
+        mae = 0.0
+
+    return CalibrationReport(
+        buckets=buckets,
+        total_predictions=total,
+        mean_absolute_error=round(mae, 4),
+    )

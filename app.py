@@ -564,6 +564,29 @@ elif page == "Benchmark & Quality":
             st.dataframe(err_df, use_container_width=True, hide_index=True)
         else:
             st.caption("No mismatches to show.")
+
+        if report.calibration and report.calibration.total_predictions > 0:
+            st.markdown("---")
+            st.markdown("**Confidence Calibration — Reliability Diagram**")
+            st.caption(
+                f"Mean Absolute Error: {report.calibration.mean_absolute_error:.3f} "
+                f"(lower is better — predicted confidence closer to observed accuracy)."
+            )
+            cal_data = []
+            for b in report.calibration.buckets:
+                if b.count > 0:
+                    cal_data.append({
+                        "Confidence": b.mid,
+                        "Observed Accuracy": b.observed_accuracy,
+                        "Perfect Calibration": b.mid,
+                        "Count": b.count,
+                    })
+            if cal_data:
+                cal_df = pd.DataFrame(cal_data).set_index("Confidence")
+                st.line_chart(cal_df[["Observed Accuracy", "Perfect Calibration"]])
+                st.dataframe(cal_df, use_container_width=True, hide_index=True)
+            else:
+                st.info("No predictions in any confidence bucket.")
     else:
         st.info("Click 'Run benchmark now' to compute live metrics against the sample ground truth.")
 
