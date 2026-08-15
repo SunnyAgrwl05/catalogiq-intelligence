@@ -17,6 +17,7 @@ from evaluation.scorer import error_category_summary, evaluate
 from pipeline.correction_memory import load_corrections, record_correction
 from pipeline.enrichment import enrich_catalog
 from pipeline.icons import LOGO_MARK, icon
+from pipeline.run_history import load_history, recent_history, record_run
 from pipeline.reference_data import DATA_DIR, load_reference_data, reference_data_status
 from pipeline.schemas import Decision
 
@@ -224,7 +225,8 @@ with st.sidebar:
         "Navigate",
         [
             "Dashboard", "Product Explainability", "Contradictions",
-            "Human Review", "Benchmark & Quality", "Scale Test", "Raw vs Enriched / Export",
+            "Human Review", "Benchmark & Quality", "Health Trend",
+            "Scale Test", "Raw vs Enriched / Export",
         ],
         label_visibility="collapsed",
     )
@@ -279,7 +281,17 @@ if page == "Dashboard":
         st.session_state.results = results
         st.session_state.input_rows = rows
         st.session_state.last_run_seconds = elapsed
-        st.success(f"Processed {len(results)} products in {elapsed:.2f}s.")
+        n = len(results)
+        auto_count = sum(1 for r in results if r.overall_decision() == Decision.AUTO_APPROVED)
+        conflict_count = sum(r.conflict_count() for r in results)
+        avg_trust = sum(r.overall_trust() for r in results) / n if n else 0
+        record_run(
+            n_records=n,
+            overall_field_accuracy=avg_trust,
+            auto_approved_pct=auto_count / n if n else 0,
+            conflict_count=conflict_count,
+        )
+        st.success(f"Processed {n} products in {elapsed:.2f}s.")
 
     results = st.session_state.results
     if results:
@@ -521,6 +533,46 @@ elif page == "Benchmark & Quality":
             st.caption("No mismatches to show.")
     else:
         st.info("Click 'Run benchmark now' to compute live metrics against the sample ground truth.")
+
+# ============================================================ HEALTH TREND
+elif page == "Health Trend":
+    st.subheader("Catalog Health Trend")
+    history = load_history()
+    if not history:
+        st.info("No run history yet. Run the intelligence engine on the Dashboard to start tracking catalog health over time.")
+    else:
+        st.caption(f"Showing the most recent {len(history)} run(s).")
+        rows_data = []
+        for r in history:
+            rows_data.append({
+                "Timestamp": r.timestamp[:19].replace("T", " "),
+                "Records": r.n_records,
+                "Field Accuracy": f"{r.overall_field_accuracy * 100:.1f}%",
+                "Auto-Approved %": f"{r.auto_approved_pct * 100:.1f}%",
+                "Conflicts": r.conflict_count,
+            })
+        st.dataframe(pd.DataFrame(rows_data), use_container_width=True, hide_index=True)
+
+        st.write("")
+        st.markdown("**Trend over time**")
+        chart_df = pd.DataFrame({
+            "Run": list(range(1, len(history) + 1)),
+            "Field Accuracy (%)": [r.overall_field_accuracy * 100 for r in history],
+            "Auto-Approved (%)": [r.auto_approved_pct * 100 for r in history],
+            "Conflicts": [r.conflict_count for r in history],
+        }).set_index("Run")
+        st.line_chart(chart_df)
+
+        if len(history) >= 2:
+            latest = history[-1]
+            previous = history[-2]
+            delta_acc = latest.overall_field_accuracy - previous.overall_field_accuracy
+            delta_auto = latest.auto_approved_pct - previous.auto_approved_pct
+            delta_conf = latest.conflict_count - previous.conflict_count
+            c1, c2, c3 = st.columns(3)
+            c1.metric("Field Accuracy", f"{latest.overall_field_accuracy * 100:.1f}%", f"{delta_acc * 100:+.1f}%")
+            c2.metric("Auto-Approved %", f"{latest.auto_approved_pct * 100:.1f}%", f"{delta_auto * 100:+.1f}%")
+            c3.metric("Conflicts", latest.conflict_count, f"{delta_conf:+d}")
 
 # =================================================================== SCALE TEST
 elif page == "Scale Test":
