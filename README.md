@@ -1,4 +1,4 @@
-[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE) [![Live Demo](https://img.shields.io/badge/Live-Demo-brightgreen)](#) [![Source Code](https://img.shields.io/badge/Source-Code-blue)](https://github.com/SunnyAgrwl05/catalogiq-intelligence) [![PRs Welcome](https://img.shields.io/badge/PRs-welcome-brightgreen.svg)](CONTRIBUTING.md)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE) [![Live Demo](https://img.shields.io/badge/Live-Demo-brightgreen)](#) [![Source Code](https://img.shields.io/badge/Source-Code-blue)](https://github.com/SunnyAgrwl05/catalogiq-intelligence) [![PRs Welcome](https://img.shields.io/badge/PRs-welcome-brightgreen.svg)](CONTRIBUTING.md) [![Tests](https://github.com/SunnyAgrwl05/catalogiq-intelligence/actions/workflows/tests.yml/badge.svg)](https://github.com/SunnyAgrwl05/catalogiq-intelligence/actions/workflows/tests.yml)
 
 
 # 🧠 CatalogIQ Intelligence
