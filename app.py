@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import csv
 import io
+import os
 import time
 
 import pandas as pd
@@ -15,6 +16,7 @@ import streamlit as st
 
 from evaluation.scorer import error_category_summary, evaluate
 from pipeline.correction_memory import load_corrections, record_correction
+from pipeline.custom_rules import load_rules_file, merge_custom_rules_into_ref
 from pipeline.enrichment import enrich_catalog
 from pipeline.icons import LOGO_MARK, icon
 from pipeline.reference_data import DATA_DIR, load_reference_data, reference_data_status
@@ -270,10 +272,30 @@ if page == "Dashboard":
         st.write("")
         run_clicked = st.button("RUN INTELLIGENCE ENGINE", type="primary", use_container_width=True)
 
+    rules_file = st.file_uploader(
+        "Optional: upload custom validation rules (YAML or JSON). "
+        "Leave empty to use built-in rules only. See data/custom_rules_sample.yaml for the format.",
+        type=["yaml", "yml", "json"],
+    )
+
     if run_clicked:
         rows = read_uploaded_or_sample(uploaded)
         corrections = load_corrections()
         t0 = time.perf_counter()
+        if rules_file is not None:
+            import tempfile
+            suffix = os.path.splitext(rules_file.name)[1] or ".yaml"
+            with tempfile.NamedTemporaryFile(delete=False, suffix=suffix, mode="w", encoding="utf-8") as tmp:
+                tmp.write(rules_file.getvalue().decode("utf-8"))
+                tmp_path = tmp.name
+            try:
+                custom = load_rules_file(tmp_path)
+                merge_custom_rules_into_ref(ref, custom)
+                st.toast(f"Loaded custom rules from {rules_file.name}")
+            except Exception as e:
+                st.warning(f"Could not load custom rules file: {e}")
+            finally:
+                os.unlink(tmp_path)
         results = enrich_catalog(rows, ref, corrections)
         elapsed = time.perf_counter() - t0
         st.session_state.results = results
